@@ -150,7 +150,7 @@ Produce a clear spec before writing code.
 
 2. **Board System:**
    - 425 squares (1-425)
-   - Snake & ladder mappings: `{start: end}`
+   - Tomb layout: 7x3 grid with the parameter filled with 1x1 walls and an exit in the center of the top parameter
    - Visual layout: 25x17 grid with 1x1 walls on each even column intersecting each even row
 
 3. **Game Loop:**
@@ -162,43 +162,15 @@ Produce a clear spec before writing code.
    - Respawn Ghost at tomb when cooldown over
 
 4. **Input Handling:**
-   - Roll dice button click
-   - Form submission for player setup
-   - Restart button
+   - O and P combo keys pressed to move 1 square
+   - WASD keys pressed to change player direction
+   - Start game button
+   - End game button (when game has started)
+   - Play again button (when game ends)
+   - Back to Title button (when game ends)
+   - Input for initials (when score is higher than any of the current top 3 score)
 
 5. **Rendering:**
    - DOM-based board (CSS Grid)
    - Player tokens positioned absolutely or via CSS transforms
-   - HUD updates (current player, positions, last roll)
-
-**Board Representation & Snake/Ladder Mapping:**
-
-```js
-// Example mappings
-const ladders = {
-  2: 38,
-  7: 14,
-  8: 31,
-  15: 26,
-  21: 42,
-  28: 84,
-  36: 44,
-  51: 67,
-  71: 91,
-  78: 98,
-  87: 94,
-};
-
-const snakes = {
-  16: 6,
-  46: 25,
-  49: 11,
-  62: 19,
-  64: 60,
-  74: 53,
-  89: 68,
-  92: 88,
-  95: 75,
-  99: 80,
-};
-```
+   - HUD updates (lives left, current game score, elapsed time mm:ss)
