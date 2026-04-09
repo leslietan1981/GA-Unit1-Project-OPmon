@@ -48,8 +48,7 @@ Produce a clear spec before writing code.
 
 ```
 +------------------------------------+
-|               B.a.M.B              |
-|       (Bash and Mash Buttons)      |
+|               OP-mon               |
 |                                    |
 | [ 1. AAA : Score : Time Survived ] |
 | [ 2. AAA : Score : Time Survived ] |
