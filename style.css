@@ -14,8 +14,7 @@
 }
 
 .maze-path {
-  display: flex;
-  justify-content: center;
+  display: grid;
 
   background-color: rgb(230, 220, 220);
   border-style: dashed;

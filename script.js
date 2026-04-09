@@ -47,12 +47,17 @@ const buildMaze = () => {
         mazePaths.push(tile);
       }
       //   tile.textContent = `${i}, ${j}`;
+      tile.id = `tile-${i}-${j}`;
       mazeContainer.appendChild(tile);
     }
   }
 };
 
-// const get
+const spawnPlayer = (playerContainer) => {
+  const startPositionTileId = `tile-${mazeSize.rows - 1}-${Math.floor((mazeSize.columns - 1) / 2)}`;
+  const startPositionTile = document.querySelector(`#${startPositionTileId}`);
+  startPositionTile.appendChild(playerContainer);
+};
 
 const createPlayer = () => {
   const playerContainer = document.createElement("div");
@@ -61,9 +66,10 @@ const createPlayer = () => {
 };
 
 const init = () => {
-  //
   deriveTombArea();
   buildMaze();
+  createPlayer();
+  spawnPlayer(player.container);
 };
 
 init();
