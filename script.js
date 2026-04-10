@@ -74,6 +74,7 @@ class Player {
 
   #element = null;
   #tile = null;
+  #direction = -1;
 
   constructor() {
     this.#element = document.createElement("div");
@@ -98,10 +99,17 @@ class Player {
     return this.#tile;
   }
 
+  get direction() {
+    return this.#direction;
+  }
+
   updateDirection(direction = -1) {
     this.#element.classList.remove(...this.#stateStyles);
+    this.#direction = direction;
     if (direction >= 0 && direction < this.#stateStyles.length) {
       this.#element.classList.add(this.#stateStyles[direction]);
+    } else {
+      this.#direction = -1;
     }
   }
 
@@ -130,6 +138,8 @@ const mazeWalls = [];
 const player = new Player();
 const directionalKeys = ["w", "a", "s", "d"];
 let directionalKeysDown = 0;
+const moveKeys = ["o", "p"];
+let lastMoveKey = "";
 
 const deriveTombArea = () => {
   const startRowIndex = Math.floor((mazeSize.rows - tombSize.rows) / 2);
@@ -182,7 +192,7 @@ const spawnPlayer = () => {
 };
 
 const movePlayer = (direction, steps = 1) => {
-  if (player.tile) {
+  if (player.tile && direction > -1) {
     let [destRowIndex, destColumnIndex] = player.tile.getPosition();
 
     if (direction % 2 === 0) {
@@ -205,8 +215,17 @@ const movePlayer = (direction, steps = 1) => {
 const handleKeydown = (e) => {
   if (directionalKeys.includes(e.key)) {
     player.updateDirection(directionalKeys.indexOf(e.key));
-    directionalKeysDown += 1;
-    movePlayer(directionalKeys.indexOf(e.key));
+    if (!e.repeat) {
+      directionalKeysDown++;
+    }
+  }
+
+  if (moveKeys.includes(e.key)) {
+    // if (lastMoveKey === moveKeys[0] && e.key === moveKeys[1]) {
+    if (lastMoveKey !== e.key) {
+      movePlayer(player.direction);
+    }
+    lastMoveKey = e.key;
   }
 };
 
