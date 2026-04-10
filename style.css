@@ -68,3 +68,11 @@
   font-size: 1rem;
   padding: 0;
 }
+
+.collectible-gem {
+  display: grid;
+  color: rgb(15, 190, 255);
+  font-size: 1.4rem;
+  justify-items: center;
+  align-items: center;
+}
