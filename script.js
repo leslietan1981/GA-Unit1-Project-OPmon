@@ -3,15 +3,18 @@ class MazeTile {
   #currentStyleIndex = -1;
   #rowIndex = -1;
   #columnIndex = -1;
-  #element;
+  #element = null;
   // type: path || wall
-  #isWall = false;
+  #isPath = false;
+  #player = null;
 
-  constructor(rowIndex, columnIndex, element, isWall = false) {
+  constructor(rowIndex, columnIndex, isPath = true) {
     this.#rowIndex = rowIndex;
     this.#columnIndex = columnIndex;
-    this.#element = element;
-    this.isWall = isWall;
+    this.#element = document.createElement("div");
+    this.isWall = isPath;
+
+    this.#element.id = `tile-${rowIndex}-${columnIndex}`;
   }
 
   #updateStyle() {
@@ -19,48 +22,101 @@ class MazeTile {
       if (this.#currentStyleIndex !== -1) {
         this.#element.classList.remove(this.#styles[this.#currentStyleIndex]);
       }
-      this.#element.classList.add(this.#styles[this.#isWall ? 1 : 0]);
+      this.#element.classList.add(this.#styles[this.#isPath ? 1 : 0]);
     }
   }
 
   set isWall(value) {
-    this.#isWall = value;
+    this.#isPath = value;
     this.#updateStyle();
   }
 
   get isWall() {
-    return this.#isWall;
+    return this.#isPath;
   }
 
   get element() {
     return this.#element;
+  }
+
+  getPosition() {
+    return [this.#rowIndex, this.#columnIndex];
+  }
+
+  addPlayer(playerObject) {
+    if (!this.#player) {
+      this.#player = playerObject;
+      this.#element.append(playerObject.element);
+    }
+  }
+}
+
+class Player {
+  #baseStateStyle = "player-state-base";
+  #stateStyles = [
+    "player-state-up",
+    "player-state-left",
+    "player-state-down",
+    "player-state-right",
+  ];
+  #eyeStyle = "player-eye";
+  #eyeChar = "\u25CF";
+
+  #element = null;
+  #tile = null;
+
+  constructor() {
+    this.#element = document.createElement("div");
+    this.#element.id = "game-player";
+    this.#element.classList.add(this.#baseStateStyle);
+
+    const createEye = () => {
+      const eye = document.createElement("div");
+      eye.classList.add(this.#eyeStyle);
+      eye.textContent = this.#eyeChar;
+      return eye;
+    };
+
+    this.#element.append(createEye(), createEye());
+  }
+
+  get element() {
+    return this.#element;
+  }
+
+  get tile() {
+    return this.#tile;
+  }
+
+  updateDirection(direction = -1) {
+    this.#element.classList.remove(...this.#stateStyles);
+    if (direction >= 0 && direction < this.#stateStyles.length) {
+      this.#element.classList.add(this.#stateStyles[direction]);
+    }
+  }
+
+  moveToTile(tile) {
+    if (tile instanceof MazeTile) {
+      if (!tile.isWall) {
+        this.#tile = tile;
+        this.#tile.element.append(this.#element);
+      }
+    }
   }
 }
 
 // End of Classes -------------------------------------------------------
 
 const mazeContainer = document.querySelector("#maze");
-const mazeSize = { columns: 21, rows: 13 };
-const pathClassName = "maze-path";
-const wallClassName = "maze-wall";
-const tombSize = { columns: 7, rows: 3 };
+const mazeSize = { rows: 13, columns: 21 };
+const tombSize = { rows: 3, columns: 7 };
 const tombWallsPositions = [];
 const mazeTiles = [];
 const mazePaths = [];
 const mazeWalls = [];
 
-const player = {};
-const playerStateClasses = [
-  "player-state-base",
-  [
-    "player-state-up",
-    "player-state-right",
-    "player-state-down",
-    "player-state-left",
-  ],
-];
-const playerEyeClassName = "player-eye";
-const directionalKeys = ["w", "d", "s", "a"];
+const player = new Player();
+const directionalKeys = ["w", "a", "s", "d"];
 let directionalKeysDown = 0;
 
 const deriveTombArea = () => {
@@ -77,7 +133,7 @@ const deriveTombArea = () => {
   for (let i = 0; i < tombSize.rows; i++) {
     for (let j = 0; j < tombSize.columns; j++) {
       if (
-        !(i === 0 && j === Math.floor((tombSize.columns - 1) / 2)) &&
+        // !(i === 0 && j === Math.floor((tombSize.columns - 1) / 2)) &&
         !(i > 0 && i < tombSize.rows - 1 && j > 0 && j < tombSize.columns - 1)
       ) {
         tombWallsPositions.push(`${startRowIndex + i},${startColumnIndex + j}`);
@@ -95,58 +151,46 @@ const buildMaze = () => {
       const tileIsWall =
         tombWallsPositions.includes(`${i},${j}`) ||
         (i % 2 !== 0 && j % 2 !== 0);
-      const tile = new MazeTile(
-        i,
-        j,
-        document.createElement("div"),
-        tileIsWall,
-      );
+      const tile = new MazeTile(i, j, tileIsWall);
       tileIsWall ? mazeWalls.push(tile) : mazePaths.push(tile);
-
-      //   tile.textContent = `${i}, ${j}`;
-      tile.id = `tile-${i}-${j}`;
       rowTiles.push(tile);
       mazeContainer.appendChild(tile.element);
     }
   }
 };
 
-const createPlayer = () => {
-  const playerContainer = document.createElement("div");
-  playerContainer.id = "game-player";
-  playerContainer.classList.add(playerStateClasses[0]);
-  player.container = playerContainer;
-
-  const leftEye = document.createElement("div");
-  leftEye.classList.add(playerEyeClassName);
-  leftEye.textContent = "\u25CF";
-
-  const rightEye = document.createElement("div");
-  rightEye.classList.add(playerEyeClassName);
-  rightEye.textContent = "\u25CF";
-
-  playerContainer.append(leftEye, rightEye);
-  playerContainer.classList.add(playerStateClasses[0]);
-};
-
-const spawnPlayer = (playerContainer) => {
+const spawnPlayer = () => {
   const tile =
     mazeTiles[mazeSize.rows - 1][Math.floor((mazeSize.columns - 1) / 2)];
-  tile.element.appendChild(playerContainer);
+  player.moveToTile(tile);
 };
 
-const changePlayerDirection = (direction = -1) => {
-  const states = playerStateClasses[1];
-  player.container.classList.remove(...states);
-  if (direction >= 0 && direction < states.length) {
-    player.container.classList.add(states[direction]);
+const movePlayer = (direction, steps = 1) => {
+  if (player.tile) {
+    let [destRowIndex, destColumnIndex] = player.tile.getPosition();
+
+    if (direction % 2 === 0) {
+      destRowIndex += (direction - 1) * steps;
+    } else {
+      destColumnIndex += (direction - 2) * steps;
+    }
+
+    if (
+      destRowIndex >= 0 &&
+      destRowIndex < mazeSize.rows &&
+      destColumnIndex >= 0 &&
+      destColumnIndex < mazeSize.columns
+    ) {
+      player.moveToTile(mazeTiles[destRowIndex][destColumnIndex]);
+    }
   }
 };
 
 const handleKeydown = (e) => {
   if (directionalKeys.includes(e.key)) {
-    changePlayerDirection(directionalKeys.indexOf(e.key));
+    player.updateDirection(directionalKeys.indexOf(e.key));
     directionalKeysDown += 1;
+    movePlayer(directionalKeys.indexOf(e.key));
   }
 };
 
@@ -154,7 +198,7 @@ const handleKeyUp = (e) => {
   if (directionalKeys.includes(e.key)) {
     if (directionalKeysDown > 0) {
       if (--directionalKeysDown === 0) {
-        changePlayerDirection();
+        player.updateDirection();
       }
     }
   }
@@ -170,8 +214,8 @@ const init = () => {
 
   deriveTombArea();
   buildMaze();
-  createPlayer();
-  spawnPlayer(player.container);
+
+  spawnPlayer(player);
   addHandlers();
 };
 
