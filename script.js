@@ -6,7 +6,6 @@ class MazeTile {
   #element = null;
   // type: path || wall
   #isPath = false;
-  #player = null;
 
   constructor(rowIndex, columnIndex, isPath = true) {
     this.#rowIndex = rowIndex;
@@ -28,7 +27,7 @@ class MazeTile {
   #updateStyle() {
     this.#removeStyle();
     if (this.#element) {
-      this.#currentStyle = this.#styles[this.#isPath ? 1 : 0];
+      this.#currentStyle = this.#styles[this.#isPath ? 0 : 1];
       this.#element.classList.add(this.#currentStyle);
     }
   }
@@ -115,7 +114,7 @@ class Player {
 
   moveToTile(tile) {
     if (tile instanceof MazeTile) {
-      if (!tile.isPath) {
+      if (tile.isPath) {
         this.#tile = tile;
         this.#tile.element.append(this.#element);
       }
@@ -171,12 +170,12 @@ const buildMaze = () => {
     const rowTiles = [];
     mazeTiles.push(rowTiles);
     for (let j = 0; j < mazeSize.columns; j++) {
-      //   const tile = document.createElement("div");
-      const tileIsWall =
+      const tileIsPath = !(
         tombWallsPositions.includes(`${i},${j}`) ||
-        (i % 2 !== 0 && j % 2 !== 0);
-      const tile = new MazeTile(i, j, tileIsWall);
-      tileIsWall ? mazeWalls.push(tile) : mazePaths.push(tile);
+        (i % 2 !== 0 && j % 2 !== 0)
+      );
+      const tile = new MazeTile(i, j, tileIsPath);
+      tileIsPath ? mazeWalls.push(tile) : mazePaths.push(tile);
       rowTiles.push(tile);
       mazeContainer.appendChild(tile.element);
     }
