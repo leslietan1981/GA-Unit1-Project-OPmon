@@ -25,6 +25,12 @@
   border: 1px solid rgb(210, 210, 210);
 }
 
+.maze-tomb-exit {
+  background-color: rgb(220, 210, 210);
+  border: 1px solid rgb(210, 210, 210);
+  border-top: 0.3rem double rgb(20, 20, 20);
+}
+
 #game-player {
   display: grid;
   grid-template-rows: 1fr;

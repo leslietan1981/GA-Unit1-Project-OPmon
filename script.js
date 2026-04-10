@@ -1,6 +1,6 @@
 class MazeTile {
   #styles = ["maze-path", "maze-wall"];
-  #currentStyleIndex = -1;
+  #currentStyle = "";
   #rowIndex = -1;
   #columnIndex = -1;
   #element = null;
@@ -12,26 +12,35 @@ class MazeTile {
     this.#rowIndex = rowIndex;
     this.#columnIndex = columnIndex;
     this.#element = document.createElement("div");
-    this.isWall = isPath;
+    this.#isPath = isPath;
+    this.#updateStyle();
 
     this.#element.id = `tile-${rowIndex}-${columnIndex}`;
   }
 
-  #updateStyle() {
-    if (this.#element) {
-      if (this.#currentStyleIndex !== -1) {
-        this.#element.classList.remove(this.#styles[this.#currentStyleIndex]);
-      }
-      this.#element.classList.add(this.#styles[this.#isPath ? 1 : 0]);
+  #removeStyle() {
+    if (this.#element && this.#currentStyle !== "") {
+      this.#element.classList.remove(this.#currentStyle);
+      this.#currentStyle = "";
     }
   }
 
-  set isWall(value) {
-    this.#isPath = value;
-    this.#updateStyle();
+  #updateStyle() {
+    this.#removeStyle();
+    if (this.#element) {
+      this.#currentStyle = this.#styles[this.#isPath ? 1 : 0];
+      this.#element.classList.add(this.#currentStyle);
+    }
   }
 
-  get isWall() {
+  setIsPath(value, updateStyle = true) {
+    this.#isPath = value;
+    if (updateStyle) {
+      this.#updateStyle();
+    }
+  }
+
+  get isPath() {
     return this.#isPath;
   }
 
@@ -43,10 +52,11 @@ class MazeTile {
     return [this.#rowIndex, this.#columnIndex];
   }
 
-  addPlayer(playerObject) {
-    if (!this.#player) {
-      this.#player = playerObject;
-      this.#element.append(playerObject.element);
+  overrideStyle(newStyle) {
+    this.#removeStyle();
+    if (this.#element) {
+      this.#currentStyle = newStyle;
+      this.#element.classList.add(this.#currentStyle);
     }
   }
 }
@@ -97,7 +107,7 @@ class Player {
 
   moveToTile(tile) {
     if (tile instanceof MazeTile) {
-      if (!tile.isWall) {
+      if (!tile.isPath) {
         this.#tile = tile;
         this.#tile.element.append(this.#element);
       }
@@ -110,6 +120,8 @@ class Player {
 const mazeContainer = document.querySelector("#maze");
 const mazeSize = { rows: 13, columns: 21 };
 const tombSize = { rows: 3, columns: 7 };
+const tombExit = [0, Math.floor(tombSize.columns / 2)];
+const tombExitStyle = "maze-tomb-exit";
 const tombWallsPositions = [];
 const mazeTiles = [];
 const mazePaths = [];
@@ -125,6 +137,9 @@ const deriveTombArea = () => {
     (mazeSize.columns - tombSize.columns) / 2,
   );
 
+  tombExit[0] += startRowIndex;
+  tombExit[1] += startColumnIndex;
+
   const emptySpaceSize = {
     columns: tombSize.columns - 2,
     rows: tombSize.rows - 2,
@@ -133,7 +148,6 @@ const deriveTombArea = () => {
   for (let i = 0; i < tombSize.rows; i++) {
     for (let j = 0; j < tombSize.columns; j++) {
       if (
-        // !(i === 0 && j === Math.floor((tombSize.columns - 1) / 2)) &&
         !(i > 0 && i < tombSize.rows - 1 && j > 0 && j < tombSize.columns - 1)
       ) {
         tombWallsPositions.push(`${startRowIndex + i},${startColumnIndex + j}`);
@@ -157,6 +171,8 @@ const buildMaze = () => {
       mazeContainer.appendChild(tile.element);
     }
   }
+
+  mazeTiles[tombExit[0]][tombExit[1]].overrideStyle(tombExitStyle);
 };
 
 const spawnPlayer = () => {
