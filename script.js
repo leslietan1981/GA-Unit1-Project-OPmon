@@ -131,8 +131,6 @@ const tombExit = [0, Math.floor(tombSize.columns / 2)];
 const tombExitStyle = "maze-tomb-exit";
 const tombWallsPositions = [];
 const mazeTiles = [];
-const mazePaths = [];
-const mazeWalls = [];
 
 const player = new Player();
 const directionalKeys = ["w", "a", "s", "d"];
@@ -175,13 +173,18 @@ const buildMaze = () => {
         (i % 2 !== 0 && j % 2 !== 0)
       );
       const tile = new MazeTile(i, j, tileIsPath);
-      tileIsPath ? mazeWalls.push(tile) : mazePaths.push(tile);
       rowTiles.push(tile);
       mazeContainer.appendChild(tile.element);
     }
   }
 
   mazeTiles[tombExit[0]][tombExit[1]].overrideStyle(tombExitStyle);
+};
+
+const spawnGems = () => {
+  for (const tile of mazeTiles) {
+    //
+  }
 };
 
 const spawnPlayer = () => {
