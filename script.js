@@ -38,6 +38,10 @@ class MazeTile {
     return this.#collectible;
   }
 
+  get hasGhost() {
+    return this.#ghosts.length > 0;
+  }
+
   getPosition() {
     return [this.#rowIndex, this.#columnIndex];
   }
@@ -151,13 +155,24 @@ class AvatarBase {
 }
 
 class Player extends AvatarBase {
+  #recoveryStyle = "player-recovery";
+  #isAlive = true;
+
   constructor() {
     super("player-base", "player-eye", "●");
+  }
+
+  get isAlive() {
+    return this.#isAlive;
+  }
+
+  recoveryMode() {
+    this.#isAlive = false;
+    this.element.classList.toggle(this.#recoveryStyle, true);
   }
 }
 
 class Ghost extends AvatarBase {
-  #decisionPool = [-1, 0, 1, 2, 3];
   #maxMoveTicks = 5;
   #maxIdleTicks = 2;
   #ticksLeft = 0;
@@ -166,20 +181,8 @@ class Ghost extends AvatarBase {
     super("ghost-base", "player-eye", "▿");
   }
 
-  randomDirection() {
-    this.#decisionPool.push(
-      ...this.#decisionPool.splice(
-        Math.floor(Math.random() * this.#decisionPool.length),
-      ),
-    );
-    this.updateDirection(
-      this.#decisionPool[Math.floor(Math.random() * this.#decisionPool.length)],
-    );
-    this.#ticksLeft = Math.ceil(Math.random() * this.#maxMoveTicks);
-  }
-
   tick() {
-    return --this.#ticksLeft;
+    return --this.#ticksLeft <= 0;
   }
 
   setMoveTick() {
@@ -191,7 +194,6 @@ class Ghost extends AvatarBase {
   }
 
   setAlive(thoughtInterval, callbackAction, ...args) {
-    this.randomDirection();
     const intervalID = setInterval(callbackAction, thoughtInterval, ...args);
   }
 }
@@ -231,7 +233,13 @@ const moveKeys = ["o", "p"];
 let lastMoveKey = "";
 
 let ghostSpawningTile = null;
-const ghosts = [new Ghost(), new Ghost(), new Ghost(), new Ghost()];
+const ghosts = [
+  new Ghost(),
+  new Ghost(),
+  new Ghost(),
+  new Ghost(),
+  new Ghost(),
+];
 const availableGhosts = [];
 const ghostSpawnInterval = 5 * 1000;
 const ghostDecisionInterval = 200;
@@ -242,11 +250,13 @@ const gemCoolDownDuration = 5 * 1000;
 const removedGems = [];
 let lastGemTimestamp = -1;
 
+const gameUpdateInterval = 200;
 const gameSessionTimerIDs = {};
 
 let isPlaying = false;
 let score = 0;
-let elapsed = 0;
+let gameStartTime = 0;
+let elapsedTime = 0;
 
 const buildMaze = () => {
   for (let i = 0; i < mazeLevelData.length; i++) {
@@ -376,9 +386,12 @@ const moveAvatarTo = (avatar, tile) => {
 };
 
 const checkTile = (tile) => {
-  if (tile.player) {
+  if (tile.player && player.isAlive) {
     if (tile.collectible instanceof Gem) {
       collectGem(tile.collectible);
+    }
+    if (tile.hasGhost) {
+      player.recoveryMode();
     }
   }
 };
@@ -400,6 +413,7 @@ const addGemBack = (gem, tile) => {
 
 const addScore = (value) => {
   score += value;
+  console.log("Score:", score);
 };
 
 const checkGems = () => {
@@ -412,6 +426,7 @@ const checkGems = () => {
 };
 
 const onInterval = () => {
+  elapsedTime = Date.now() - gameStartTime;
   checkGems();
   checkGhosts();
 };
@@ -468,10 +483,11 @@ const clearSessionTimer = () => {
 };
 
 const gameStart = () => {
-  const intervalID = setInterval(onInterval, 500);
+  const intervalID = setInterval(onInterval, gameUpdateInterval);
   gameSessionTimerIDs[intervalID] = true;
   spawnPlayer(player);
   isPlaying = true;
+  gameStartTime = Date.now();
 };
 
 const init = () => {
