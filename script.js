@@ -1,5 +1,4 @@
 class MazeTile {
-  //   #styles = ["maze-path", "maze-wall"];
   #styles = ["maze-path", "maze-wall", "maze-tomb-space", "maze-tomb-exit"];
   #rowIndex = -1;
   #columnIndex = -1;
@@ -140,10 +139,6 @@ class Gem {
 
 const mazeContainer = document.querySelector("#maze");
 const mazeSize = { rows: 13, columns: 21 };
-const tombSize = { rows: 3, columns: 7 };
-const tombExit = [0, Math.floor(tombSize.columns / 2)];
-const tombExitStyle = "maze-tomb-exit";
-const tombWallsPositions = [];
 const mazeTiles = [];
 
 const player = new Player();
@@ -162,31 +157,6 @@ let isPlaying = false;
 let score = 0;
 let elapsed = 0;
 
-const deriveTombArea = () => {
-  const startRowIndex = Math.floor((mazeSize.rows - tombSize.rows) / 2);
-  const startColumnIndex = Math.floor(
-    (mazeSize.columns - tombSize.columns) / 2,
-  );
-
-  tombExit[0] += startRowIndex;
-  tombExit[1] += startColumnIndex;
-
-  const emptySpaceSize = {
-    columns: tombSize.columns - 2,
-    rows: tombSize.rows - 2,
-  };
-
-  for (let i = 0; i < tombSize.rows; i++) {
-    for (let j = 0; j < tombSize.columns; j++) {
-      if (
-        !(i > 0 && i < tombSize.rows - 1 && j > 0 && j < tombSize.columns - 1)
-      ) {
-        tombWallsPositions.push(`${startRowIndex + i},${startColumnIndex + j}`);
-      }
-    }
-  }
-};
-
 const buildMaze = () => {
   for (let i = 0; i < mazeLevelData.length; i++) {
     const rowTiles = [];
@@ -198,24 +168,6 @@ const buildMaze = () => {
     }
   }
 };
-
-// const buildMaze = () => {
-//   for (let i = 0; i < mazeSize.rows; i++) {
-//     const rowTiles = [];
-//     mazeTiles.push(rowTiles);
-//     for (let j = 0; j < mazeSize.columns; j++) {
-//       const tileIsPath = !(
-//         tombWallsPositions.includes(`${i},${j}`) ||
-//         (i % 2 !== 0 && j % 2 !== 0)
-//       );
-//       const tile = new MazeTile(i, j, tileIsPath);
-//       rowTiles.push(tile);
-//       mazeContainer.appendChild(tile.element);
-//     }
-//   }
-
-//   mazeTiles[tombExit[0]][tombExit[1]].overrideStyle(tombExitStyle);
-// };
 
 const spawnGems = () => {
   for (const rowTiles of mazeTiles) {
@@ -283,14 +235,6 @@ const collectGem = (gem) => {
   }
   gem.tile.removeCollectible();
   gem.tile = null;
-
-  // set interval to return a gem every cooldown
-
-  //   const tile = gem.tile;
-  //   const timeoutID = setTimeout(() => {
-  //     delete timeouts[timeoutID];
-  //     addGemBack(gem, tile);
-  //   }, gemCooldown);
 };
 
 const addGemBack = (gem, tile) => {
@@ -370,7 +314,6 @@ const init = () => {
   directionalKeysDown = 0;
   score = 0;
 
-  deriveTombArea();
   buildMaze();
   spawnGems();
   addHandlers();
