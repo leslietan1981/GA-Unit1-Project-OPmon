@@ -323,17 +323,6 @@ const ghostDecision = (ghost) => {
       ghost.setIdleTick();
     }
   }
-  //   const destinationTile = checkPathInDirection(ghost.tile, ghost.direction);
-  //   if (destinationTile) {
-  //     moveAvatarTo(ghost, destinationTile);
-  //     ghost.tick();
-  //   } else {
-  //     const availableTiles = getAvailablePathsFromTile(ghost.tile);
-  //     const [direction, tile] =
-  //       availableTiles[Math.floor(Math.random() * availableTiles.length)];
-  //     ghost.updateDirection(direction);
-  //     moveAvatarTo(ghost, tile);
-  //   }
 };
 
 const spawnPlayer = () => {
