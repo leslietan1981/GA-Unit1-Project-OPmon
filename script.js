@@ -1,47 +1,25 @@
 class MazeTile {
-  #styles = ["maze-path", "maze-wall"];
-  #currentStyle = "";
+  //   #styles = ["maze-path", "maze-wall"];
+  #styles = ["maze-path", "maze-wall", "maze-tomb-space", "maze-tomb-exit"];
   #rowIndex = -1;
   #columnIndex = -1;
   #element = null;
-  #isPath = false;
+  #typeID = 0;
   #player = null;
   #collectible = null;
 
-  constructor(rowIndex, columnIndex, isPath = true) {
+  constructor(rowIndex, columnIndex, typeID = 0) {
     this.#rowIndex = rowIndex;
     this.#columnIndex = columnIndex;
     this.#element = document.createElement("div");
-    this.#isPath = isPath;
-    this.#updateStyle();
+    this.#typeID = typeID;
 
     this.#element.id = `tile-${rowIndex}-${columnIndex}`;
-  }
-
-  #removeStyle() {
-    if (this.#element && this.#currentStyle !== "") {
-      this.#element.classList.remove(this.#currentStyle);
-      this.#currentStyle = "";
-    }
-  }
-
-  #updateStyle() {
-    this.#removeStyle();
-    if (this.#element) {
-      this.#currentStyle = this.#styles[this.#isPath ? 0 : 1];
-      this.#element.classList.add(this.#currentStyle);
-    }
-  }
-
-  setIsPath(value, updateStyle = true) {
-    this.#isPath = value;
-    if (updateStyle) {
-      this.#updateStyle();
-    }
+    this.#element.classList.add(this.#styles[this.#typeID]);
   }
 
   get isPath() {
-    return this.#isPath;
+    return this.#typeID === 0;
   }
 
   get element() {
@@ -58,14 +36,6 @@ class MazeTile {
 
   getPosition() {
     return [this.#rowIndex, this.#columnIndex];
-  }
-
-  overrideStyle(newStyle) {
-    this.#removeStyle();
-    if (this.#element) {
-      this.#currentStyle = newStyle;
-      this.#element.classList.add(this.#currentStyle);
-    }
   }
 
   addPlayer(player) {
@@ -218,22 +188,34 @@ const deriveTombArea = () => {
 };
 
 const buildMaze = () => {
-  for (let i = 0; i < mazeSize.rows; i++) {
+  for (let i = 0; i < mazeLevelData.length; i++) {
     const rowTiles = [];
     mazeTiles.push(rowTiles);
-    for (let j = 0; j < mazeSize.columns; j++) {
-      const tileIsPath = !(
-        tombWallsPositions.includes(`${i},${j}`) ||
-        (i % 2 !== 0 && j % 2 !== 0)
-      );
-      const tile = new MazeTile(i, j, tileIsPath);
+    for (let j = 0; j < mazeLevelData[i].length; j++) {
+      const tile = new MazeTile(i, j, mazeLevelData[i][j].type);
       rowTiles.push(tile);
       mazeContainer.appendChild(tile.element);
     }
   }
-
-  mazeTiles[tombExit[0]][tombExit[1]].overrideStyle(tombExitStyle);
 };
+
+// const buildMaze = () => {
+//   for (let i = 0; i < mazeSize.rows; i++) {
+//     const rowTiles = [];
+//     mazeTiles.push(rowTiles);
+//     for (let j = 0; j < mazeSize.columns; j++) {
+//       const tileIsPath = !(
+//         tombWallsPositions.includes(`${i},${j}`) ||
+//         (i % 2 !== 0 && j % 2 !== 0)
+//       );
+//       const tile = new MazeTile(i, j, tileIsPath);
+//       rowTiles.push(tile);
+//       mazeContainer.appendChild(tile.element);
+//     }
+//   }
+
+//   mazeTiles[tombExit[0]][tombExit[1]].overrideStyle(tombExitStyle);
+// };
 
 const spawnGems = () => {
   for (const rowTiles of mazeTiles) {

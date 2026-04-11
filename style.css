@@ -25,6 +25,11 @@
   border: 1px solid rgb(210, 210, 210);
 }
 
+.maze-tomb-space {
+  background-color: rgb(220, 210, 210);
+  border: 1px dashed rgb(210, 210, 210);
+}
+
 .maze-tomb-exit {
   background-color: rgb(220, 210, 210);
   border: 1px solid rgb(210, 210, 210);
