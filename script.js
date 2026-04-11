@@ -48,6 +48,14 @@ class MazeTile {
     return this.#element;
   }
 
+  get player() {
+    return this.#player;
+  }
+
+  get collectible() {
+    return this.#collectible;
+  }
+
   getPosition() {
     return [this.#rowIndex, this.#columnIndex];
   }
@@ -72,9 +80,16 @@ class MazeTile {
     }
   }
 
-  addGem(gem) {
-    this.#collectible = gem;
-    this.#element.prepend(gem.element);
+  addCollectible(collectible) {
+    this.#collectible = collectible;
+    this.#element.prepend(collectible.element);
+  }
+
+  removeCollectible() {
+    if (this.#collectible) {
+      this.#collectible.element.remove();
+      this.#collectible = null;
+    }
   }
 }
 
@@ -127,16 +142,14 @@ class Player {
       this.#direction = -1;
     }
   }
-
-  addScore(collectible) {
-    this.#score += collectible.value;
-  }
 }
 
 class Gem {
   #style = "collectible-gem";
   #value = 10;
   #element = null;
+
+  tile = null;
 
   constructor() {
     this.#element = document.createElement("div");
@@ -170,6 +183,14 @@ const moveKeys = ["o", "p"];
 let lastMoveKey = "";
 
 const gems = [];
+const gemCoolDownDuration = 5 * 1000;
+const removedGems = [];
+let lastGemTimestamp = -1;
+const gameSessionTimerIDs = {};
+
+let isPlaying = false;
+let score = 0;
+let elapsed = 0;
 
 const deriveTombArea = () => {
   const startRowIndex = Math.floor((mazeSize.rows - tombSize.rows) / 2);
@@ -219,7 +240,8 @@ const spawnGems = () => {
     for (const tile of rowTiles) {
       if (tile.isPath) {
         const gem = new Gem();
-        tile.addGem(gem);
+        tile.addCollectible(gem);
+        gem.tile = tile;
         gems.push(gem);
       }
     }
@@ -227,11 +249,10 @@ const spawnGems = () => {
 };
 
 const spawnPlayer = () => {
-  const tile =
-    mazeTiles[mazeSize.rows - 1][Math.floor((mazeSize.columns - 1) / 2)];
+  const tile = mazeTiles[mazeSize.rows - 1][Math.floor(mazeSize.columns / 2)];
   tile.addPlayer(player);
   player.tile = tile;
-  //   checkTile(tile);
+  checkTile(tile);
 };
 
 const getTileInDirection = (tile, direction, steps = 1) => {
@@ -261,25 +282,57 @@ const movePlayerTo = (tile) => {
   }
   tile.addPlayer(player);
   player.tile = tile;
-  // checkTile(destinationTile);
+  checkTile(tile);
 };
 
 const checkTile = (tile) => {
-  //   const gameObjs = tile.getRegistered();
-  //   if (gameObjs.includes(player)) {
-  //     for (const gameObj of gameObjs) {
-  //       if (gameObj instanceof Gem) {
-  //         collectGem(gameObj);
-  //       }
-  //     }
-  //   }
+  if (tile.player) {
+    if (tile.collectible instanceof Gem) {
+      collectGem(tile.collectible);
+    }
+  }
 };
 
 const collectGem = (gem) => {
-  player.addScore(gem);
+  addScore(gem.value);
+  removedGems.push([gem, gem.tile]);
+  if (lastGemTimestamp === -1) {
+    lastGemTimestamp = Date.now();
+  }
+  gem.tile.removeCollectible();
+  gem.tile = null;
+
+  // set interval to return a gem every cooldown
+
+  //   const tile = gem.tile;
+  //   const timeoutID = setTimeout(() => {
+  //     delete timeouts[timeoutID];
+  //     addGemBack(gem, tile);
+  //   }, gemCooldown);
+};
+
+const addGemBack = (gem, tile) => {
+  tile.addCollectible(gem);
+  gem.tile = tile;
+};
+
+const addScore = (value) => {
+  score += value;
+};
+
+const onInterval = () => {
+  if (lastGemTimestamp !== -1 && removedGems.length > 0) {
+    if ((Date.now() - lastGemTimestamp) / gemCoolDownDuration >= 1) {
+      addGemBack(...removedGems.shift());
+      lastGemTimestamp = Date.now();
+    }
+  }
 };
 
 const handleKeydown = (e) => {
+  if (!isPlaying) {
+    return;
+  }
   if (directionalKeys.includes(e.key)) {
     player.updateDirection(directionalKeys.indexOf(e.key));
     if (!e.repeat) {
@@ -300,6 +353,9 @@ const handleKeydown = (e) => {
 };
 
 const handleKeyUp = (e) => {
+  if (!isPlaying) {
+    return;
+  }
   if (directionalKeys.includes(e.key)) {
     if (directionalKeysDown > 0) {
       if (--directionalKeysDown === 0) {
@@ -314,16 +370,30 @@ const addHandlers = () => {
   document.addEventListener("keyup", handleKeyUp);
 };
 
+const clearSessionTimer = () => {
+  for (const timerID in gameSessionTimerIDs) {
+    clearInterval(timerID);
+    delete gameSessionTimerIDs[timerID];
+  }
+};
+
+const gameStart = () => {
+  const intervalID = setInterval(onInterval, 500);
+  gameSessionTimerIDs[intervalID] = true;
+  spawnPlayer(player);
+  isPlaying = true;
+};
+
 const init = () => {
   directionalKeysDown = 0;
+  score = 0;
 
   deriveTombArea();
   buildMaze();
-
   spawnGems();
-  spawnPlayer(player);
-
   addHandlers();
+
+  gameStart();
 };
 
 init();
