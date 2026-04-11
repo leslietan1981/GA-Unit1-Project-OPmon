@@ -5,7 +5,8 @@ class MazeTile {
   #columnIndex = -1;
   #element = null;
   #isPath = false;
-  #registered = [];
+  #player = null;
+  #collectible = null;
 
   constructor(rowIndex, columnIndex, isPath = true) {
     this.#rowIndex = rowIndex;
@@ -59,21 +60,21 @@ class MazeTile {
     }
   }
 
-  register(gameObj) {
-    if (!this.#registered.includes(gameObj)) {
-      this.#registered.push(gameObj);
+  addPlayer(player) {
+    this.#player = player;
+    this.#element.append(player.element);
+  }
+
+  removePlayer() {
+    if (this.#player) {
+      this.#player.element.remove();
+      this.#player = null;
     }
   }
 
-  unregister(gameObj) {
-    let idx = this.#registered.indexOf(gameObj);
-    if (idx > -1) {
-      this.#registered.splice(idx, 1);
-    }
-  }
-
-  getRegistered() {
-    return [...this.#registered];
+  addGem(gem) {
+    this.#collectible = gem;
+    this.#element.prepend(gem.element);
   }
 }
 
@@ -89,8 +90,10 @@ class Player {
   #eyeChar = "\u25CF";
 
   #element = null;
-  #tile = null;
   #direction = -1;
+  #score = 0;
+
+  tile = null;
 
   constructor() {
     this.#element = document.createElement("div");
@@ -111,10 +114,6 @@ class Player {
     return this.#element;
   }
 
-  get tile() {
-    return this.#tile;
-  }
-
   get direction() {
     return this.#direction;
   }
@@ -129,13 +128,8 @@ class Player {
     }
   }
 
-  moveToTile(tile) {
-    if (this.#tile) {
-      this.#tile.unregister(this);
-    }
-    this.#tile = tile;
-    this.#tile.element.append(this.#element);
-    tile.register(this);
+  addScore(collectible) {
+    this.#score += collectible.value;
   }
 }
 
@@ -143,7 +137,6 @@ class Gem {
   #style = "collectible-gem";
   #value = 10;
   #element = null;
-  #tile = null;
 
   constructor() {
     this.#element = document.createElement("div");
@@ -151,17 +144,12 @@ class Gem {
     this.#element.textContent = "♦︎";
   }
 
-  addToTile(tile) {
-    if (this.#tile) {
-      this.#tile.unregister(this);
-    }
-    this.#tile = tile;
-    this.#tile.element.prepend(this.#element);
-    tile.register(this);
+  get value() {
+    return this.#value;
   }
 
-  remove() {
-    this.#element.remove();
+  get element() {
+    return this.#element;
   }
 }
 
@@ -231,9 +219,8 @@ const spawnGems = () => {
     for (const tile of rowTiles) {
       if (tile.isPath) {
         const gem = new Gem();
-        gem.addToTile(tile);
+        tile.addGem(gem);
         gems.push(gem);
-        tile.register(gem);
       }
     }
   }
@@ -242,19 +229,19 @@ const spawnGems = () => {
 const spawnPlayer = () => {
   const tile =
     mazeTiles[mazeSize.rows - 1][Math.floor((mazeSize.columns - 1) / 2)];
-  player.moveToTile(tile);
+  tile.addPlayer(player);
+  player.tile = tile;
+  //   checkTile(tile);
 };
 
-const movePlayer = (direction, steps = 1) => {
-  if (player.tile && direction > -1) {
-    let [destRowIndex, destColumnIndex] = player.tile.getPosition();
-
+const getTileInDirection = (tile, direction, steps = 1) => {
+  if (tile && direction > -1) {
+    let [destRowIndex, destColumnIndex] = tile.getPosition();
     if (direction % 2 === 0) {
       destRowIndex += (direction - 1) * steps;
     } else {
       destColumnIndex += (direction - 2) * steps;
     }
-
     if (
       destRowIndex >= 0 &&
       destRowIndex < mazeSize.rows &&
@@ -262,23 +249,34 @@ const movePlayer = (direction, steps = 1) => {
       destColumnIndex < mazeSize.columns
     ) {
       const destinationTile = mazeTiles[destRowIndex][destColumnIndex];
-      if (destinationTile.isPath) {
-        player.moveToTile(destinationTile);
-        checkTile(destinationTile);
-      }
+      return destinationTile.isPath ? destinationTile : null;
     }
   }
+  return null;
+};
+
+const movePlayerTo = (tile) => {
+  if (player.tile) {
+    player.tile.removePlayer();
+  }
+  tile.addPlayer(player);
+  player.tile = tile;
+  // checkTile(destinationTile);
 };
 
 const checkTile = (tile) => {
-  const gameObjs = tile.getRegistered();
-  if (gameObjs.includes(player)) {
-    for (const gameObj of gameObjs) {
-      if (gameObj instanceof Gem) {
-        gameObj.remove();
-      }
-    }
-  }
+  //   const gameObjs = tile.getRegistered();
+  //   if (gameObjs.includes(player)) {
+  //     for (const gameObj of gameObjs) {
+  //       if (gameObj instanceof Gem) {
+  //         collectGem(gameObj);
+  //       }
+  //     }
+  //   }
+};
+
+const collectGem = (gem) => {
+  player.addScore(gem);
 };
 
 const handleKeydown = (e) => {
@@ -292,7 +290,10 @@ const handleKeydown = (e) => {
   if (moveKeys.includes(e.key)) {
     // if (lastMoveKey === moveKeys[0] && e.key === moveKeys[1]) {
     if (lastMoveKey !== e.key) {
-      movePlayer(player.direction);
+      const destinationTile = getTileInDirection(player.tile, player.direction);
+      if (destinationTile) {
+        movePlayerTo(destinationTile);
+      }
     }
     lastMoveKey = e.key;
   }
@@ -319,8 +320,8 @@ const init = () => {
   deriveTombArea();
   buildMaze();
 
-  spawnPlayer(player);
   spawnGems();
+  spawnPlayer(player);
 
   addHandlers();
 };
