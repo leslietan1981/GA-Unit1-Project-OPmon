@@ -6,6 +6,7 @@ class MazeTile {
   #typeID = 0;
   #player = null;
   #collectible = null;
+  #ghosts = [];
 
   constructor(rowIndex, columnIndex, typeID = 0) {
     this.#rowIndex = rowIndex;
@@ -19,6 +20,10 @@ class MazeTile {
 
   get isPath() {
     return this.#typeID === 0;
+  }
+
+  get isTombExit() {
+    return this.#typeID === 3;
   }
 
   get element() {
@@ -60,34 +65,66 @@ class MazeTile {
       this.#collectible = null;
     }
   }
+
+  addGhost(ghost) {
+    if (!this.#ghosts.includes(ghost)) {
+      this.#ghosts.push(ghost);
+      this.#element.append(ghost.element);
+    }
+  }
+
+  removeGhost(ghost) {
+    const ghostIdx = this.#ghosts.indexOf(ghost);
+    if (ghostIdx != -1) {
+      this.#ghosts.splice(ghostIdx, 1);
+      ghost.element.remove();
+    }
+  }
+
+  addAvatar(avatar) {
+    switch (true) {
+      case avatar instanceof Player:
+        this.addPlayer(avatar);
+        break;
+      case avatar instanceof Ghost:
+        this.addGhost(avatar);
+        break;
+    }
+  }
+
+  removeAvatar(avatar) {
+    switch (true) {
+      case avatar instanceof Player:
+        this.removePlayer();
+        break;
+      case avatar instanceof Ghost:
+        this.removeGhost(avatar);
+        break;
+    }
+  }
 }
 
-class Player {
-  #baseStateStyle = "player-state-base";
-  #stateStyles = [
-    "player-state-up",
-    "player-state-left",
-    "player-state-down",
-    "player-state-right",
+class AvatarBase {
+  #eyeStateStyles = [
+    "eye-state-up",
+    "eye-state-left",
+    "eye-state-down",
+    "eye-state-right",
   ];
-  #eyeStyle = "player-eye";
-  #eyeChar = "\u25CF";
 
   #element = null;
   #direction = -1;
-  #score = 0;
 
   tile = null;
 
-  constructor() {
+  constructor(baseStyle, eyeStyle, eyeChar) {
     this.#element = document.createElement("div");
-    this.#element.id = "game-player";
-    this.#element.classList.add(this.#baseStateStyle);
+    this.#element.classList.add(baseStyle);
 
     const createEye = () => {
       const eye = document.createElement("div");
-      eye.classList.add(this.#eyeStyle);
-      eye.textContent = this.#eyeChar;
+      eye.classList.add(eyeStyle);
+      eye.textContent = eyeChar;
       return eye;
     };
 
@@ -103,13 +140,59 @@ class Player {
   }
 
   updateDirection(direction = -1) {
-    this.#element.classList.remove(...this.#stateStyles);
+    this.#element.classList.remove(...this.#eyeStateStyles);
     this.#direction = direction;
-    if (direction >= 0 && direction < this.#stateStyles.length) {
-      this.#element.classList.add(this.#stateStyles[direction]);
+    if (direction >= 0 && direction < this.#eyeStateStyles.length) {
+      this.#element.classList.add(this.#eyeStateStyles[direction]);
     } else {
       this.#direction = -1;
     }
+  }
+}
+
+class Player extends AvatarBase {
+  constructor() {
+    super("player-base", "player-eye", "●");
+  }
+}
+
+class Ghost extends AvatarBase {
+  #decisionPool = [-1, 0, 1, 2, 3];
+  #maxMoveTicks = 5;
+  #maxIdleTicks = 2;
+  #ticksLeft = 0;
+
+  constructor() {
+    super("ghost-base", "player-eye", "▿");
+  }
+
+  randomDirection() {
+    this.#decisionPool.push(
+      ...this.#decisionPool.splice(
+        Math.floor(Math.random() * this.#decisionPool.length),
+      ),
+    );
+    this.updateDirection(
+      this.#decisionPool[Math.floor(Math.random() * this.#decisionPool.length)],
+    );
+    this.#ticksLeft = Math.ceil(Math.random() * this.#maxMoveTicks);
+  }
+
+  tick() {
+    return --this.#ticksLeft;
+  }
+
+  setMoveTick() {
+    this.#ticksLeft = Math.ceil(Math.random() * this.#maxMoveTicks);
+  }
+
+  setIdleTick() {
+    this.#ticksLeft = Math.ceil(Math.random() * this.#maxIdleTicks);
+  }
+
+  setAlive(thoughtInterval, callbackAction, ...args) {
+    this.randomDirection();
+    const intervalID = setInterval(callbackAction, thoughtInterval, ...args);
   }
 }
 
@@ -147,10 +230,18 @@ let directionalKeysDown = 0;
 const moveKeys = ["o", "p"];
 let lastMoveKey = "";
 
+let ghostSpawningTile = null;
+const ghosts = [new Ghost(), new Ghost(), new Ghost(), new Ghost()];
+const availableGhosts = [];
+const ghostSpawnInterval = 5 * 1000;
+const ghostDecisionInterval = 200;
+let lastGhostTimestamp = -1;
+
 const gems = [];
 const gemCoolDownDuration = 5 * 1000;
 const removedGems = [];
 let lastGemTimestamp = -1;
+
 const gameSessionTimerIDs = {};
 
 let isPlaying = false;
@@ -165,11 +256,15 @@ const buildMaze = () => {
       const tile = new MazeTile(i, j, mazeLevelData[i][j].type);
       rowTiles.push(tile);
       mazeContainer.appendChild(tile.element);
+
+      if (tile.isTombExit) {
+        ghostSpawningTile = mazeTiles[i - 1][j];
+      }
     }
   }
 };
 
-const spawnGems = () => {
+const initGems = () => {
   for (const rowTiles of mazeTiles) {
     for (const tile of rowTiles) {
       if (tile.isPath) {
@@ -182,6 +277,65 @@ const spawnGems = () => {
   }
 };
 
+const initGhosts = () => {
+  availableGhosts.length = 0;
+  availableGhosts.push(...ghosts);
+};
+
+const spawnGhost = () => {
+  const ghost = availableGhosts.shift();
+  ghostSpawningTile.addGhost(ghost);
+  ghost.tile = ghostSpawningTile;
+  ghost.setAlive(ghostDecisionInterval, ghostDecision, ghost);
+  getAvailablePathsFromTile(ghost.tile);
+  lastGhostTimestamp = Date.now();
+};
+
+const checkGhosts = () => {
+  if (availableGhosts.length > 0) {
+    if (
+      lastGhostTimestamp === -1 ||
+      (Date.now() - lastGhostTimestamp) / ghostSpawnInterval >= 1
+    ) {
+      spawnGhost();
+    }
+  }
+};
+
+const ghostDecision = (ghost) => {
+  if (!ghost.tick()) {
+    let newDirection = -1;
+    if (Math.floor(Math.random() * 10) > 2) {
+      const availableTiles = getAvailablePathsFromTile(ghost.tile);
+      const [direction, tile] =
+        availableTiles[Math.floor(Math.random() * availableTiles.length)];
+      newDirection = direction;
+      moveAvatarTo(ghost, tile);
+    }
+    ghost.updateDirection(newDirection);
+    newDirection !== -1 ? ghost.setMoveTick() : ghost.setIdleTick();
+  } else {
+    const destinationTile = checkPathInDirection(ghost.tile, ghost.direction);
+    if (destinationTile) {
+      moveAvatarTo(ghost, destinationTile);
+    } else {
+      ghost.updateDirection();
+      ghost.setIdleTick();
+    }
+  }
+  //   const destinationTile = checkPathInDirection(ghost.tile, ghost.direction);
+  //   if (destinationTile) {
+  //     moveAvatarTo(ghost, destinationTile);
+  //     ghost.tick();
+  //   } else {
+  //     const availableTiles = getAvailablePathsFromTile(ghost.tile);
+  //     const [direction, tile] =
+  //       availableTiles[Math.floor(Math.random() * availableTiles.length)];
+  //     ghost.updateDirection(direction);
+  //     moveAvatarTo(ghost, tile);
+  //   }
+};
+
 const spawnPlayer = () => {
   const tile = mazeTiles[mazeSize.rows - 1][Math.floor(mazeSize.columns / 2)];
   tile.addPlayer(player);
@@ -189,33 +343,46 @@ const spawnPlayer = () => {
   checkTile(tile);
 };
 
-const getTileInDirection = (tile, direction, steps = 1) => {
-  if (tile && direction > -1) {
-    let [destRowIndex, destColumnIndex] = tile.getPosition();
+const checkPathInDirection = (srcTile, direction, steps = 1) => {
+  if (srcTile && direction > -1) {
+    let [rowIdx, colIdx] = srcTile.getPosition();
     if (direction % 2 === 0) {
-      destRowIndex += (direction - 1) * steps;
+      rowIdx += (direction - 1) * steps;
     } else {
-      destColumnIndex += (direction - 2) * steps;
+      colIdx += (direction - 2) * steps;
     }
     if (
-      destRowIndex >= 0 &&
-      destRowIndex < mazeSize.rows &&
-      destColumnIndex >= 0 &&
-      destColumnIndex < mazeSize.columns
+      rowIdx >= 0 &&
+      rowIdx < mazeSize.rows &&
+      colIdx >= 0 &&
+      colIdx < mazeSize.columns
     ) {
-      const destinationTile = mazeTiles[destRowIndex][destColumnIndex];
+      const destinationTile = mazeTiles[rowIdx][colIdx];
       return destinationTile.isPath ? destinationTile : null;
     }
   }
   return null;
 };
 
-const movePlayerTo = (tile) => {
-  if (player.tile) {
-    player.tile.removePlayer();
+const getAvailablePathsFromTile = (tile) => {
+  const availablePaths = [];
+  if (tile) {
+    for (let direction = 0; direction < 4; direction++) {
+      const destTile = checkPathInDirection(tile, direction);
+      if (destTile) {
+        availablePaths.push([direction, destTile]);
+      }
+    }
   }
-  tile.addPlayer(player);
-  player.tile = tile;
+  return availablePaths;
+};
+
+const moveAvatarTo = (avatar, tile) => {
+  if (avatar.tile) {
+    avatar.tile.removeAvatar(avatar);
+  }
+  tile.addAvatar(avatar);
+  avatar.tile = tile;
   checkTile(tile);
 };
 
@@ -246,13 +413,18 @@ const addScore = (value) => {
   score += value;
 };
 
-const onInterval = () => {
+const checkGems = () => {
   if (lastGemTimestamp !== -1 && removedGems.length > 0) {
     if ((Date.now() - lastGemTimestamp) / gemCoolDownDuration >= 1) {
       addGemBack(...removedGems.shift());
       lastGemTimestamp = Date.now();
     }
   }
+};
+
+const onInterval = () => {
+  checkGems();
+  checkGhosts();
 };
 
 const handleKeydown = (e) => {
@@ -269,9 +441,12 @@ const handleKeydown = (e) => {
   if (moveKeys.includes(e.key)) {
     // if (lastMoveKey === moveKeys[0] && e.key === moveKeys[1]) {
     if (lastMoveKey !== e.key) {
-      const destinationTile = getTileInDirection(player.tile, player.direction);
+      const destinationTile = checkPathInDirection(
+        player.tile,
+        player.direction,
+      );
       if (destinationTile) {
-        movePlayerTo(destinationTile);
+        moveAvatarTo(player, destinationTile);
       }
     }
     lastMoveKey = e.key;
@@ -315,7 +490,8 @@ const init = () => {
   score = 0;
 
   buildMaze();
-  spawnGems();
+  initGems();
+  initGhosts();
   addHandlers();
 
   gameStart();
