@@ -157,6 +157,7 @@ class AvatarBase {
 class Player extends AvatarBase {
   #recoveryStyle = "player-recovery";
   #isAlive = true;
+  #timerIDs = {};
 
   constructor() {
     super("player-base", "player-eye", "●");
@@ -169,6 +170,28 @@ class Player extends AvatarBase {
   recoveryMode() {
     this.#isAlive = false;
     this.element.classList.toggle(this.#recoveryStyle, true);
+    const timeoutID = setTimeout(() => {
+      this.#preRecoveryBlink();
+      delete this.#timerIDs[timeoutID];
+    }, 3000);
+    this.#timerIDs[timeoutID] = true;
+  }
+
+  #preRecoveryBlink() {
+    const intervalID = setInterval(() => {
+      this.element.classList.toggle(this.#recoveryStyle);
+    }, 100);
+    const timeoutID = setTimeout(() => {
+      this.revive();
+      delete this.#timerIDs[timeoutID];
+      clearInterval(intervalID);
+      delete this.#timerIDs[intervalID];
+    }, 1500);
+  }
+
+  revive() {
+    this.element.classList.remove(this.#recoveryStyle);
+    this.#isAlive = true;
   }
 }
 
