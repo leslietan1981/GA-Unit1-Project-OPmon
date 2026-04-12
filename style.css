@@ -1,7 +1,6 @@
 #game {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
+  display: grid;
+  justify-content: center;
 }
 
 #maze {
@@ -101,4 +100,29 @@
   font-size: 1.4rem;
   justify-items: center;
   align-items: center;
+}
+
+#game-hud {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  grid-template-rows: 3rem;
+  justify-content: center;
+  justify-items: center;
+  align-items: center;
+  padding: 0.1rem 1rem;
+}
+
+#player-health {
+  display: flex;
+  justify-self: start;
+}
+
+#player-health {
+  display: grid;
+  grid: repeat(1, 2rem) / repeat(3, 2rem);
+  gap: 1rem;
+}
+
+#elapsed-game-time {
+  justify-self: end;
 }

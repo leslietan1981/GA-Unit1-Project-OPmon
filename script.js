@@ -243,8 +243,12 @@ class Gem {
   }
 }
 
-// End of Classes -------------------------------------------------------
+// ---------- End of Classes ----------
+// ------------------------------------
 
+const playerHealthContainer = document.querySelector("#player-health");
+const playerScoreContainer = document.querySelector("#player-score");
+const elapsedGameTimeContainer = document.querySelector("#elapsed-game-time");
 const mazeContainer = document.querySelector("#maze");
 const mazeSize = { rows: 13, columns: 21 };
 const mazeTiles = [];
@@ -273,13 +277,20 @@ const gemCoolDownDuration = 5 * 1000;
 const removedGems = [];
 let lastGemTimestamp = -1;
 
+const playerLifeStyle = "player-base";
+const playerMaxLives = 3;
+const playerLives = [];
+
 const gameUpdateInterval = 200;
 const gameSessionTimerIDs = {};
 
 let isPlaying = false;
+let currentPlayerHealth = 0;
 let score = 0;
 let gameStartTime = 0;
 let elapsedTime = 0;
+
+// ---------- Game Creation ----------
 
 const buildMaze = () => {
   for (let i = 0; i < mazeLevelData.length; i++) {
@@ -297,7 +308,7 @@ const buildMaze = () => {
   }
 };
 
-const initGems = () => {
+const createGems = () => {
   for (const rowTiles of mazeTiles) {
     for (const tile of rowTiles) {
       if (tile.isPath) {
@@ -310,9 +321,55 @@ const initGems = () => {
   }
 };
 
-const initGhosts = () => {
-  availableGhosts.length = 0;
-  availableGhosts.push(...ghosts);
+const createPlayerHealth = () => {
+  for (let i = 0; i < playerMaxLives; i++) {
+    const playerLife = document.createElement("div");
+    playerLife.classList.add(playerLifeStyle);
+    playerLives.push(playerLife);
+  }
+};
+
+const buildGame = () => {
+  buildMaze();
+  createGems();
+  createPlayerHealth();
+  addHandlers();
+};
+
+// ---------- Game Logic ----------
+
+const checkPathInDirection = (srcTile, direction, steps = 1) => {
+  if (srcTile && direction > -1) {
+    let [rowIdx, colIdx] = srcTile.getPosition();
+    if (direction % 2 === 0) {
+      rowIdx += (direction - 1) * steps;
+    } else {
+      colIdx += (direction - 2) * steps;
+    }
+    if (
+      rowIdx >= 0 &&
+      rowIdx < mazeSize.rows &&
+      colIdx >= 0 &&
+      colIdx < mazeSize.columns
+    ) {
+      const destinationTile = mazeTiles[rowIdx][colIdx];
+      return destinationTile.isPath ? destinationTile : null;
+    }
+  }
+  return null;
+};
+
+const getAvailablePathsFromTile = (tile) => {
+  const availablePaths = [];
+  if (tile) {
+    for (let direction = 0; direction < 4; direction++) {
+      const destTile = checkPathInDirection(tile, direction);
+      if (destTile) {
+        availablePaths.push([direction, destTile]);
+      }
+    }
+  }
+  return availablePaths;
 };
 
 const spawnGhost = () => {
@@ -365,40 +422,6 @@ const spawnPlayer = () => {
   checkTile(tile);
 };
 
-const checkPathInDirection = (srcTile, direction, steps = 1) => {
-  if (srcTile && direction > -1) {
-    let [rowIdx, colIdx] = srcTile.getPosition();
-    if (direction % 2 === 0) {
-      rowIdx += (direction - 1) * steps;
-    } else {
-      colIdx += (direction - 2) * steps;
-    }
-    if (
-      rowIdx >= 0 &&
-      rowIdx < mazeSize.rows &&
-      colIdx >= 0 &&
-      colIdx < mazeSize.columns
-    ) {
-      const destinationTile = mazeTiles[rowIdx][colIdx];
-      return destinationTile.isPath ? destinationTile : null;
-    }
-  }
-  return null;
-};
-
-const getAvailablePathsFromTile = (tile) => {
-  const availablePaths = [];
-  if (tile) {
-    for (let direction = 0; direction < 4; direction++) {
-      const destTile = checkPathInDirection(tile, direction);
-      if (destTile) {
-        availablePaths.push([direction, destTile]);
-      }
-    }
-  }
-  return availablePaths;
-};
-
 const moveAvatarTo = (avatar, tile) => {
   if (avatar.tile) {
     avatar.tile.removeAvatar(avatar);
@@ -406,17 +429,6 @@ const moveAvatarTo = (avatar, tile) => {
   tile.addAvatar(avatar);
   avatar.tile = tile;
   checkTile(tile);
-};
-
-const checkTile = (tile) => {
-  if (tile.player && player.isAlive) {
-    if (tile.collectible instanceof Gem) {
-      collectGem(tile.collectible);
-    }
-    if (tile.hasGhost) {
-      player.recoveryMode();
-    }
-  }
 };
 
 const collectGem = (gem) => {
@@ -436,7 +448,7 @@ const addGemBack = (gem, tile) => {
 
 const addScore = (value) => {
   score += value;
-  console.log("Score:", score);
+  playerScoreContainer.textContent = score;
 };
 
 const checkGems = () => {
@@ -448,11 +460,27 @@ const checkGems = () => {
   }
 };
 
+const checkTile = (tile) => {
+  if (tile.player && player.isAlive) {
+    if (tile.collectible instanceof Gem) {
+      collectGem(tile.collectible);
+    }
+    if (tile.hasGhost) {
+      player.recoveryMode();
+    }
+  }
+};
+
 const onInterval = () => {
   elapsedTime = Date.now() - gameStartTime;
+  elapsedGameTimeContainer.textContent = new Date(elapsedTime)
+    .toISOString()
+    .slice(14, 19);
   checkGems();
   checkGhosts();
 };
+
+// ---------- Game Interactions ----------
 
 const handleKeydown = (e) => {
   if (!isPlaying) {
@@ -505,6 +533,18 @@ const clearSessionTimer = () => {
   }
 };
 
+// ---------- Game Core ----------
+
+const initGhosts = () => {
+  availableGhosts.length = 0;
+  availableGhosts.push(...ghosts);
+};
+
+const initPlayerLife = () => {
+  playerHealthContainer.append(...playerLives);
+  currentPlayerHealth = playerLives.length;
+};
+
 const gameStart = () => {
   const intervalID = setInterval(onInterval, gameUpdateInterval);
   gameSessionTimerIDs[intervalID] = true;
@@ -517,12 +557,10 @@ const init = () => {
   directionalKeysDown = 0;
   score = 0;
 
-  buildMaze();
-  initGems();
   initGhosts();
-  addHandlers();
-
+  initPlayerLife();
   gameStart();
 };
 
+buildGame();
 init();
