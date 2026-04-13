@@ -1,6 +1,6 @@
 const mazeLevelData = [
   [
-    { type: 0 },
+    { type: 0, powerup: 0 },
     { type: 0 },
     { type: 0 },
     { type: 0 },

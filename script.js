@@ -38,7 +38,11 @@ class MazeTile {
     return this.#collectible;
   }
 
-  get hasGhost() {
+  hasCollectible() {
+    return this.#collectible !== null;
+  }
+
+  hasGhost() {
     return this.#ghosts.length > 0;
   }
 
@@ -82,7 +86,19 @@ class MazeTile {
     if (ghostIdx != -1) {
       this.#ghosts.splice(ghostIdx, 1);
       ghost.element.remove();
+      return true;
     }
+    return false;
+  }
+
+  removeAllGhosts() {
+    const removed = [];
+    for (const ghost of this.#ghosts) {
+      if (this.removeGhost(ghost)) {
+        removed.push(ghost);
+      }
+    }
+    return removed;
   }
 
   addAvatar(avatar) {
@@ -176,6 +192,7 @@ class Player extends AvatarBase {
   #deadStyle = "player-dead";
   #isAlive = true;
   #timerIDs = {};
+  #powerUps = {};
 
   constructor() {
     super("player-base", "player-eye", "●");
@@ -224,15 +241,35 @@ class Player extends AvatarBase {
     this.element.classList.remove(this.#deadStyle);
     this.#isAlive = true;
   }
+
+  addPower(powerType, rankUp = false) {
+    this.#powerUps[powerType] = rankUp
+      ? (this.#powerUps[powerType] ?? 0) + 1
+      : 1;
+  }
+
+  removePower(powerType) {
+    delete this.#powerUps[powerType];
+  }
+
+  getPowerLevel(powerType) {
+    return this.#powerUps[powerType] ?? 0;
+  }
 }
 
 class Ghost extends AvatarBase {
   #maxMoveTicks = 5;
   #maxIdleTicks = 2;
   #ticksLeft = 0;
+  #timerIDs = {};
+  #value = 200;
 
   constructor() {
     super("ghost-base", "ghost-eye", "▼");
+  }
+
+  get value() {
+    return this.#value;
   }
 
   tick() {
@@ -249,20 +286,27 @@ class Ghost extends AvatarBase {
 
   setAlive(thoughtInterval, callbackAction, ...args) {
     const intervalID = setInterval(callbackAction, thoughtInterval, ...args);
+    this.#timerIDs[intervalID] = true;
+  }
+
+  kill() {
+    for (const timerID in this.#timerIDs) {
+      clearInterval(timerID);
+    }
   }
 }
 
-class Gem {
-  #style = "collectible-gem";
-  #value = 10;
+class Collectible {
   #element = null;
+  #value = 0;
 
   tile = null;
 
-  constructor() {
+  constructor(style, char, value) {
     this.#element = document.createElement("div");
-    this.#element.classList.add(this.#style);
-    this.#element.textContent = "♦︎";
+    this.#element.classList.add(style);
+    this.#element.textContent = char;
+    this.#value = value;
   }
 
   get value() {
@@ -271,6 +315,31 @@ class Gem {
 
   get element() {
     return this.#element;
+  }
+}
+
+class Gem extends Collectible {
+  constructor() {
+    super("collectible-gem", "♦︎", 10);
+  }
+}
+
+class PowerUp extends Collectible {
+  #duration = 0;
+  #powerType = 0;
+
+  constructor({ powerType, duration }) {
+    super("collectible-powerup", "⚡︎", 100);
+    this.#duration = duration;
+    this.#powerType = powerType;
+  }
+
+  get duration() {
+    return this.#duration;
+  }
+
+  get powerType() {
+    return this.#powerType;
   }
 }
 
@@ -316,6 +385,14 @@ const gemCoolDownDuration = 5 * 1000;
 const removedGems = [];
 let lastGemTimestamp = -1;
 
+const powerUpsConfig = [{ powerType: 0, duration: 5 * 1000 }];
+const powerUpKey = "powerup";
+const powerUpTiles = [];
+const powerUps = [];
+const powerUpCoolDownDuration = 10 * 1000;
+const removedPowerUps = [];
+let lastPowerUpTimestamp = -1;
+
 const playerLifeStyle = "player-base";
 const playerMaxLives = 3;
 const playerLives = [];
@@ -338,21 +415,35 @@ const buildMaze = () => {
     const rowTiles = [];
     mazeTiles.push(rowTiles);
     for (let j = 0; j < mazeLevelData[i].length; j++) {
-      const tile = new MazeTile(i, j, mazeLevelData[i][j].type);
+      const info = mazeLevelData[i][j];
+      const tile = new MazeTile(i, j, info.type);
       rowTiles.push(tile);
       mazeContainer.appendChild(tile.element);
 
       if (tile.isTombExit) {
         ghostSpawningTile = mazeTiles[i - 1][j];
       }
+
+      if (powerUpKey in info) {
+        powerUpTiles.push([tile, info[powerUpKey]]);
+      }
     }
+  }
+};
+
+const createPowerUps = () => {
+  for (const [tile, powerType] of powerUpTiles) {
+    const powerup = new PowerUp(powerUpsConfig[powerType]);
+    tile.addCollectible(powerup);
+    powerup.tile = tile;
+    powerUps.push(powerup);
   }
 };
 
 const createGems = () => {
   for (const rowTiles of mazeTiles) {
     for (const tile of rowTiles) {
-      if (tile.isPath) {
+      if (tile.isPath && !tile.hasCollectible()) {
         const gem = new Gem();
         tile.addCollectible(gem);
         gem.tile = tile;
@@ -371,6 +462,7 @@ const createPlayerHealth = () => {
 
 const buildGame = () => {
   buildMaze();
+  createPowerUps();
   createGems();
   createPlayerHealth();
 };
@@ -418,6 +510,7 @@ const spawnGhost = () => {
   ghost.setAlive(ghostDecisionInterval, ghostDecision, ghost);
   getAvailablePathsFromTile(ghost.tile);
   lastGhostTimestamp = Date.now();
+  checkTile(ghostSpawningTile);
 };
 
 const checkGhosts = () => {
@@ -470,19 +563,31 @@ const moveAvatarTo = (avatar, tile) => {
   checkTile(tile);
 };
 
-const collectGem = (gem) => {
-  addScore(gem.value);
-  removedGems.push([gem, gem.tile]);
-  if (lastGemTimestamp === -1) {
-    lastGemTimestamp = Date.now();
+const collectCollectible = (collectible) => {
+  addScore(collectible.value);
+
+  switch (true) {
+    case collectible instanceof Gem:
+      removedGems.push([collectible, collectible.tile]);
+      if (lastGemTimestamp === -1) {
+        lastGemTimestamp = Date.now();
+      }
+      break;
+    case collectible instanceof PowerUp:
+      player.addPower(collectible.powerType);
+      removedPowerUps.push([collectible, collectible.tile]);
+      if (lastPowerUpTimestamp === -1) {
+        lastPowerUpTimestamp = Date.now();
+      }
+      break;
   }
-  gem.tile.removeCollectible();
-  gem.tile = null;
+  collectible.tile.removeCollectible();
+  collectible.tile = null;
 };
 
-const addGemBack = (gem, tile) => {
-  tile.addCollectible(gem);
-  gem.tile = tile;
+const addCollectibleBack = (collectible, tile) => {
+  tile.addCollectible(collectible);
+  collectible.tile = tile;
 };
 
 const addScore = (value) => {
@@ -502,8 +607,17 @@ const updateScore = (value) => {
 const checkGems = () => {
   if (lastGemTimestamp !== -1 && removedGems.length > 0) {
     if ((Date.now() - lastGemTimestamp) / gemCoolDownDuration >= 1) {
-      addGemBack(...removedGems.shift());
+      addCollectibleBack(...removedGems.shift());
       lastGemTimestamp = Date.now();
+    }
+  }
+};
+
+const checkPowerUps = () => {
+  if (lastPowerUpTimestamp !== -1 && removedPowerUps.length > 0) {
+    if ((Date.now() - lastPowerUpTimestamp) / powerUpCoolDownDuration >= 1) {
+      addCollectibleBack(...removedPowerUps.shift());
+      lastPowerUpTimestamp = Date.now();
     }
   }
 };
@@ -517,14 +631,23 @@ const checkGame = () => {
 
 const checkTile = (tile) => {
   if (tile.player && player.isAlive) {
-    if (tile.collectible instanceof Gem) {
-      collectGem(tile.collectible);
+    if (tile.collectible instanceof Collectible) {
+      collectCollectible(tile.collectible);
     }
-    if (tile.hasGhost) {
-      --currentPlayerHealth;
-      if (currentPlayerHealth >= 0) {
-        playerLives[currentPlayerHealth].dead();
-        currentPlayerHealth > 0 ? player.recoveryMode() : player.dead();
+    if (tile.hasGhost()) {
+      if (player.getPowerLevel(0) > 0) {
+        for (const ghost of tile.removeAllGhosts()) {
+          ghost.kill();
+          addScore(ghost.value * player.getPowerLevel(0));
+          player.addPower(0, true);
+          availableGhosts.push(ghost);
+        }
+      } else {
+        --currentPlayerHealth;
+        if (currentPlayerHealth >= 0) {
+          playerLives[currentPlayerHealth].dead();
+          currentPlayerHealth > 0 ? player.recoveryMode() : player.dead();
+        }
       }
     }
   }
@@ -536,6 +659,7 @@ const onInterval = () => {
     .toISOString()
     .slice(14, 19);
   checkGems();
+  checkPowerUps();
   checkGhosts();
   checkGame();
 };

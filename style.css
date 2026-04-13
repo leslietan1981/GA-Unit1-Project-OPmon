@@ -114,6 +114,18 @@
   align-items: center;
 }
 
+.collectible-powerup {
+  display: grid;
+  background-color: aquamarine;
+  margin: 20%;
+  border-radius: 50%;
+  border: 1px solid rgb(60, 210, 0);
+  color: black;
+  font-size: 1.4rem;
+  justify-items: center;
+  align-items: center;
+}
+
 #game-hud {
   display: grid;
   grid-template-columns: repeat(3, 1fr);
