@@ -232,7 +232,7 @@ class Ghost extends AvatarBase {
   #ticksLeft = 0;
 
   constructor() {
-    super("ghost-base", "player-eye", "▿");
+    super("ghost-base", "ghost-eye", "▼");
   }
 
   tick() {
@@ -284,6 +284,11 @@ const playerScoreZeroPrefixContainer =
 const playerScoreCurrentContainer = document.querySelector(".score-current");
 const elapsedGameTimeContainer = document.querySelector("#elapsed-game-time");
 const mazeContainer = document.querySelector("#maze");
+const gameSplashContainer = document.querySelector("#game-splash");
+const gameOverContainer = document.querySelector("#game-over");
+
+const gameScreenShowStyle = "game-screen-show";
+
 const mazeSize = { rows: 13, columns: 21 };
 const mazeTiles = [];
 
@@ -359,8 +364,6 @@ const createGems = () => {
 
 const createPlayerHealth = () => {
   for (let i = 0; i < playerMaxLives; i++) {
-    // const playerLife = document.createElement("div");
-    // playerLife.classList.add(playerLifeStyle);
     const playerLife = new Player();
     playerLives.push(playerLife);
   }
@@ -370,7 +373,6 @@ const buildGame = () => {
   buildMaze();
   createGems();
   createPlayerHealth();
-  addHandlers();
 };
 
 // ---------- Game Logic ----------
@@ -506,6 +508,13 @@ const checkGems = () => {
   }
 };
 
+const checkGame = () => {
+  if (isPlaying && currentPlayerHealth <= 0) {
+    isPlaying = false;
+    gameOverContainer.classList.add(gameScreenShowStyle);
+  }
+};
+
 const checkTile = (tile) => {
   if (tile.player && player.isAlive) {
     if (tile.collectible instanceof Gem) {
@@ -515,9 +524,7 @@ const checkTile = (tile) => {
       --currentPlayerHealth;
       if (currentPlayerHealth >= 0) {
         playerLives[currentPlayerHealth].dead();
-        if (currentPlayerHealth > 0) {
-          player.recoveryMode();
-        }
+        currentPlayerHealth > 0 ? player.recoveryMode() : player.dead();
       }
     }
   }
@@ -530,6 +537,7 @@ const onInterval = () => {
     .slice(14, 19);
   checkGems();
   checkGhosts();
+  checkGame();
 };
 
 // ---------- Game Interactions ----------
@@ -573,16 +581,20 @@ const handleKeyUp = (e) => {
   }
 };
 
+const handleGameStart = (e) => {
+  if (!isPlaying) {
+    isPlaying = true;
+    gameSplashContainer.classList.remove(gameScreenShowStyle);
+    init();
+  }
+};
+
 const addHandlers = () => {
   document.addEventListener("keydown", handleKeydown);
   document.addEventListener("keyup", handleKeyUp);
-};
-
-const clearSessionTimer = () => {
-  for (const timerID in gameSessionTimerIDs) {
-    clearInterval(timerID);
-    delete gameSessionTimerIDs[timerID];
-  }
+  document
+    .querySelector("#game-start-button")
+    .addEventListener("click", handleGameStart);
 };
 
 // ---------- Game Core ----------
@@ -593,7 +605,6 @@ const initGhosts = () => {
 };
 
 const initPlayerLife = () => {
-  //   playerHealthContainer.append(...playerLives);
   for (const playerLife of playerLives) {
     playerHealthContainer.append(playerLife.element);
     playerLife.alive();
@@ -605,9 +616,15 @@ const gameStart = () => {
   const intervalID = setInterval(onInterval, gameUpdateInterval);
   gameSessionTimerIDs[intervalID] = true;
   spawnPlayer(player);
-  isPlaying = true;
   gameStartTime = Date.now();
 };
+
+// const clearSessionTimer = () => {
+//   for (const timerID in gameSessionTimerIDs) {
+//     clearInterval(timerID);
+//     delete gameSessionTimerIDs[timerID];
+//   }
+// };
 
 const init = () => {
   directionalKeysDown = 0;
@@ -619,4 +636,4 @@ const init = () => {
 };
 
 buildGame();
-init();
+addHandlers();
