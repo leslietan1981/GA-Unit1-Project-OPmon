@@ -116,6 +116,9 @@ class AvatarBase {
     "eye-state-right",
   ];
 
+  #eyeChar = "";
+  #eyes = [];
+
   #element = null;
   #direction = -1;
 
@@ -132,7 +135,9 @@ class AvatarBase {
       return eye;
     };
 
-    this.#element.append(createEye(), createEye());
+    this.#eyeChar = eyeChar;
+    this.#eyes.push(createEye(), createEye());
+    this.#element.append(...this.#eyes);
   }
 
   get element() {
@@ -152,10 +157,23 @@ class AvatarBase {
       this.#direction = -1;
     }
   }
+
+  setDisplayedEyes(eyeChar) {
+    for (const eye of this.#eyes) {
+      eye.textContent = eyeChar;
+    }
+  }
+
+  resetDisplayedEyes() {
+    for (const eye of this.#eyes) {
+      eye.textContent = this.#eyeChar;
+    }
+  }
 }
 
 class Player extends AvatarBase {
   #recoveryStyle = "player-recovery";
+  #deadStyle = "player-dead";
   #isAlive = true;
   #timerIDs = {};
 
@@ -191,6 +209,19 @@ class Player extends AvatarBase {
 
   revive() {
     this.element.classList.remove(this.#recoveryStyle);
+    this.#isAlive = true;
+  }
+
+  dead() {
+    this.setDisplayedEyes("x");
+    this.element.classList.toggle(this.#deadStyle, true);
+    this.#isAlive = false;
+  }
+
+  alive() {
+    this.resetDisplayedEyes();
+    this.element.classList.remove(this.#recoveryStyle);
+    this.element.classList.remove(this.#deadStyle);
     this.#isAlive = true;
   }
 }
@@ -248,6 +279,9 @@ class Gem {
 
 const playerHealthContainer = document.querySelector("#player-health");
 const playerScoreContainer = document.querySelector("#player-score");
+const playerScoreZeroPrefixContainer =
+  document.querySelector(".score-zero-prefix");
+const playerScoreCurrentContainer = document.querySelector(".score-current");
 const elapsedGameTimeContainer = document.querySelector("#elapsed-game-time");
 const mazeContainer = document.querySelector("#maze");
 const mazeSize = { rows: 13, columns: 21 };
@@ -284,9 +318,11 @@ const playerLives = [];
 const gameUpdateInterval = 200;
 const gameSessionTimerIDs = {};
 
+const gameScoreDefaultString = "0000000000";
+
 let isPlaying = false;
 let currentPlayerHealth = 0;
-let score = 0;
+let currentScore = 0;
 let gameStartTime = 0;
 let elapsedTime = 0;
 
@@ -323,8 +359,9 @@ const createGems = () => {
 
 const createPlayerHealth = () => {
   for (let i = 0; i < playerMaxLives; i++) {
-    const playerLife = document.createElement("div");
-    playerLife.classList.add(playerLifeStyle);
+    // const playerLife = document.createElement("div");
+    // playerLife.classList.add(playerLifeStyle);
+    const playerLife = new Player();
     playerLives.push(playerLife);
   }
 };
@@ -447,8 +484,17 @@ const addGemBack = (gem, tile) => {
 };
 
 const addScore = (value) => {
-  score += value;
-  playerScoreContainer.textContent = score;
+  currentScore += value;
+  updateScore(currentScore);
+};
+
+const updateScore = (value) => {
+  const digitsLength = value.toString().length;
+  playerScoreZeroPrefixContainer.textContent = gameScoreDefaultString.slice(
+    0,
+    gameScoreDefaultString.length - digitsLength,
+  );
+  playerScoreCurrentContainer.textContent = value;
 };
 
 const checkGems = () => {
@@ -466,7 +512,13 @@ const checkTile = (tile) => {
       collectGem(tile.collectible);
     }
     if (tile.hasGhost) {
-      player.recoveryMode();
+      --currentPlayerHealth;
+      if (currentPlayerHealth >= 0) {
+        playerLives[currentPlayerHealth].dead();
+        if (currentPlayerHealth > 0) {
+          player.recoveryMode();
+        }
+      }
     }
   }
 };
@@ -541,7 +593,11 @@ const initGhosts = () => {
 };
 
 const initPlayerLife = () => {
-  playerHealthContainer.append(...playerLives);
+  //   playerHealthContainer.append(...playerLives);
+  for (const playerLife of playerLives) {
+    playerHealthContainer.append(playerLife.element);
+    playerLife.alive();
+  }
   currentPlayerHealth = playerLives.length;
 };
 
@@ -555,7 +611,7 @@ const gameStart = () => {
 
 const init = () => {
   directionalKeysDown = 0;
-  score = 0;
+  currentScore = 0;
 
   initGhosts();
   initPlayerLife();

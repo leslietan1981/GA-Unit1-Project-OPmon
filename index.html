@@ -4,13 +4,22 @@
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>OP-mon</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+      href="https://fonts.googleapis.com/css2?family=Source+Code+Pro:ital,wght@0,200..900;1,200..900&display=swap"
+      rel="stylesheet"
+    />
     <link rel="stylesheet" href="style.css" />
   </head>
   <body>
     <div id="game">
       <div id="game-hud">
         <div id="player-health"></div>
-        <div id="player-score">0</div>
+        <div id="player-score">
+          <span class="score-zero-prefix">0</span
+          ><span class="score-current"></span>
+        </div>
         <div id="elapsed-game-time"><label>0:00</label></div>
       </div>
       <div id="maze"></div>

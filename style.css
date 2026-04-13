@@ -58,6 +58,14 @@
   padding: 0;
 }
 
+.player-dead {
+  background-color: rgb(180, 180, 180);
+}
+
+.player-dead > * {
+  font-size: 0.8rem !important;
+}
+
 .ghost-base {
   display: grid;
   grid-template-rows: 1fr;
@@ -96,7 +104,8 @@
 
 .collectible-gem {
   display: grid;
-  color: rgb(15, 190, 255);
+  color: rgb(245, 225, 25);
+  -webkit-text-stroke: 1px rgb(180, 150, 10);
   font-size: 1.4rem;
   justify-items: center;
   align-items: center;
@@ -110,6 +119,10 @@
   justify-items: center;
   align-items: center;
   padding: 0.1rem 1rem;
+  font:
+    2rem "Source Code Pro",
+    monospace;
+  color: rgb(50, 50, 50);
 }
 
 #player-health {
@@ -125,4 +138,8 @@
 
 #elapsed-game-time {
   justify-self: end;
+}
+
+.score-zero-prefix {
+  color: rgb(180, 180, 180);
 }
