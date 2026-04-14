@@ -398,7 +398,8 @@ const playerMaxLives = 3;
 const playerLives = [];
 
 const gameUpdateInterval = 200;
-const gameSessionTimerIDs = {};
+const gameSessionIDs = {};
+const gamePowerTimeoutIDs = { 0: null };
 
 const gameScoreDefaultString = "0000000000";
 
@@ -574,7 +575,7 @@ const collectCollectible = (collectible) => {
       }
       break;
     case collectible instanceof PowerUp:
-      player.addPower(collectible.powerType);
+      addPowerForDuration(collectible);
       removedPowerUps.push([collectible, collectible.tile]);
       if (lastPowerUpTimestamp === -1) {
         lastPowerUpTimestamp = Date.now();
@@ -588,6 +589,18 @@ const collectCollectible = (collectible) => {
 const addCollectibleBack = (collectible, tile) => {
   tile.addCollectible(collectible);
   collectible.tile = tile;
+};
+
+const addPowerForDuration = (powerUp) => {
+  console.log(gamePowerTimeoutIDs[powerUp.powerType]);
+  clearTimeout(gamePowerTimeoutIDs[powerUp.powerType]);
+
+  player.addPower(powerUp.powerType);
+  gamePowerTimeoutIDs[powerUp.powerType] = setTimeout(() => {
+    player.removePower(powerUp.powerType);
+    gamePowerTimeoutIDs[powerUp.powerType] = null;
+    console.log("power over");
+  }, powerUp.duration);
 };
 
 const addScore = (value) => {
@@ -738,7 +751,7 @@ const initPlayerLife = () => {
 
 const gameStart = () => {
   const intervalID = setInterval(onInterval, gameUpdateInterval);
-  gameSessionTimerIDs[intervalID] = true;
+  gameSessionIDs[intervalID] = true;
   spawnPlayer(player);
   gameStartTime = Date.now();
 };
