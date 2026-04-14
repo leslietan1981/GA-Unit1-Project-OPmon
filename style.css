@@ -6,7 +6,7 @@
 #maze {
   display: grid;
   grid: repeat(13, 3rem) / repeat(21, 3rem);
-  border: 0.5em solid rgb(20, 20, 20);
+  border: 0.5rem solid rgb(20, 20, 20);
   font-family: "Source Code Pro", monospace;
   grid-area: 2 / 1;
 }
@@ -53,7 +53,7 @@
 
 .player-recovery {
   background-color: rgba(255, 0, 0, 0.3);
-  outline: 2px dashed rgba(255, 0, 0, 0.6);
+  outline: 0.1rem dashed rgba(255, 0, 0, 0.6);
 }
 
 .player-eye {
@@ -175,7 +175,7 @@
 .game-screen-show {
   display: grid;
   grid: 39rem / 63rem;
-  border: 0.5em solid rgb(20, 20, 20);
+  border: 0.5rem solid rgb(20, 20, 20);
   background-color: rgba(20, 20, 20, 0.8);
   grid-area: 2 / 1;
   font-family: "Source Code Pro", monospace;
@@ -192,6 +192,19 @@
   color: white;
   text-align: center;
   padding: 2rem;
+}
+
+.game-countdown-show {
+  display: grid;
+  justify-content: center;
+  align-items: center;
+  border: 0.5rem solid rgb(20, 20, 20);
+  background-color: rgba(20, 20, 20, 0.5);
+  grid-area: 2 / 1;
+  font:
+    900 10rem "Source Code Pro",
+    monospace;
+  color: white;
 }
 
 h1,

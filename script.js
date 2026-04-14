@@ -125,12 +125,7 @@ class MazeTile {
 }
 
 class AvatarBase {
-  #eyeStateStyles = [
-    "eye-state-up",
-    "eye-state-left",
-    "eye-state-down",
-    "eye-state-right",
-  ];
+  #eyeStateStyles = ["eye-state-up", "eye-state-left", "eye-state-down", "eye-state-right"];
 
   #eyeChar = "";
   #eyes = [];
@@ -215,9 +210,7 @@ class Player extends AvatarBase {
   }
 
   #removeAllAdditionalStyles() {
-    for (const { styleKey, styleValue } of Object.entries(
-      this.#additionalStyles,
-    )) {
+    for (const { styleKey, styleValue } of Object.entries(this.#additionalStyles)) {
       if (styleKey === "powerUps") {
         for (const powerUpStyle of styleValue) {
           this.element.classList.remove(powerUpStyle);
@@ -440,17 +433,24 @@ class PowerUp extends Collectible {
 // ---------- End of Classes ----------
 // ------------------------------------
 
+// -- Hud Containers --
 const playerHealthContainer = document.querySelector("#player-health");
 const playerScoreContainer = document.querySelector("#player-score");
-const playerScoreZeroPrefixContainer =
-  document.querySelector(".score-zero-prefix");
+const playerScoreZeroPrefixContainer = document.querySelector(".score-zero-prefix");
 const playerScoreCurrentContainer = document.querySelector(".score-current");
 const elapsedGameTimeContainer = document.querySelector("#elapsed-game-time");
-const mazeContainer = document.querySelector("#maze");
+
+// -- Game Screen Containers --
 const gameSplashContainer = document.querySelector("#game-splash");
 const gameOverContainer = document.querySelector("#game-over");
+const gameCountdownContainer = document.querySelector("#game-countdown");
+
+const mazeContainer = document.querySelector("#maze");
 
 const gameScreenShowStyle = "game-screen-show";
+const gameCountdownShowStyle = "game-countdown-show";
+
+let countdownTimerID = null;
 
 const mazeSize = { rows: 13, columns: 21 };
 const mazeTiles = [];
@@ -462,13 +462,7 @@ const moveKeys = ["o", "p"];
 let lastMoveKey = "";
 
 let ghostSpawningTile = null;
-const ghosts = [
-  new Ghost(),
-  new Ghost(),
-  new Ghost(),
-  new Ghost(),
-  new Ghost(),
-];
+const ghosts = [new Ghost(), new Ghost(), new Ghost(), new Ghost(), new Ghost()];
 const availableGhosts = [];
 const ghostSpawnInterval = 5 * 1000;
 const ghostDecisionInterval = 200;
@@ -573,12 +567,7 @@ const checkPathInDirection = (srcTile, direction, steps = 1) => {
     } else {
       colIdx += (direction - 2) * steps;
     }
-    if (
-      rowIdx >= 0 &&
-      rowIdx < mazeSize.rows &&
-      colIdx >= 0 &&
-      colIdx < mazeSize.columns
-    ) {
+    if (rowIdx >= 0 && rowIdx < mazeSize.rows && colIdx >= 0 && colIdx < mazeSize.columns) {
       const destinationTile = mazeTiles[rowIdx][colIdx];
       return destinationTile.isPath ? destinationTile : null;
     }
@@ -611,10 +600,7 @@ const spawnGhost = () => {
 
 const checkGhosts = () => {
   if (availableGhosts.length > 0) {
-    if (
-      lastGhostTimestamp === -1 ||
-      (Date.now() - lastGhostTimestamp) / ghostSpawnInterval >= 1
-    ) {
+    if (lastGhostTimestamp === -1 || (Date.now() - lastGhostTimestamp) / ghostSpawnInterval >= 1) {
       spawnGhost();
     }
   }
@@ -625,8 +611,7 @@ const ghostDecision = (ghost) => {
     let newDirection = -1;
     if (Math.floor(Math.random() * 10) > 2) {
       const availableTiles = getAvailablePathsFromTile(ghost.tile);
-      const [direction, tile] =
-        availableTiles[Math.floor(Math.random() * availableTiles.length)];
+      const [direction, tile] = availableTiles[Math.floor(Math.random() * availableTiles.length)];
       newDirection = direction;
       moveAvatarTo(ghost, tile);
     }
@@ -723,13 +708,6 @@ const checkPowerUps = () => {
   }
 };
 
-const checkGame = () => {
-  if (isPlaying && currentPlayerHealth <= 0) {
-    isPlaying = false;
-    gameOverContainer.classList.add(gameScreenShowStyle);
-  }
-};
-
 const checkTile = (tile) => {
   if (tile.player && player.isAlive) {
     if (tile.collectible instanceof Collectible) {
@@ -757,11 +735,16 @@ const checkTile = (tile) => {
   }
 };
 
+const checkGame = () => {
+  if (isPlaying && currentPlayerHealth <= 0) {
+    isPlaying = false;
+    gameOverContainer.classList.add(gameScreenShowStyle);
+  }
+};
+
 const onInterval = () => {
   elapsedTime = Date.now() - gameStartTime;
-  elapsedGameTimeContainer.textContent = new Date(elapsedTime)
-    .toISOString()
-    .slice(14, 19);
+  elapsedGameTimeContainer.textContent = new Date(elapsedTime).toISOString().slice(14, 19);
   checkGems();
   checkPowerUps();
   checkGhosts();
@@ -784,10 +767,7 @@ const handleKeydown = (e) => {
   if (moveKeys.includes(e.key)) {
     // if (lastMoveKey === moveKeys[0] && e.key === moveKeys[1]) {
     if (lastMoveKey !== e.key) {
-      const destinationTile = checkPathInDirection(
-        player.tile,
-        player.direction,
-      );
+      const destinationTile = checkPathInDirection(player.tile, player.direction);
       if (destinationTile) {
         moveAvatarTo(player, destinationTile);
       }
@@ -811,7 +791,6 @@ const handleKeyUp = (e) => {
 
 const handleGameStart = (e) => {
   if (!isPlaying) {
-    isPlaying = true;
     gameSplashContainer.classList.remove(gameScreenShowStyle);
     init();
   }
@@ -820,9 +799,7 @@ const handleGameStart = (e) => {
 const addHandlers = () => {
   document.addEventListener("keydown", handleKeydown);
   document.addEventListener("keyup", handleKeyUp);
-  document
-    .querySelector("#game-start-button")
-    .addEventListener("click", handleGameStart);
+  document.querySelector("#game-start-button").addEventListener("click", handleGameStart);
 };
 
 // ---------- Game Core ----------
@@ -840,7 +817,22 @@ const initPlayerLife = () => {
   currentPlayerHealth = playerLives.length;
 };
 
+const gameCountdown = (messages) => {
+  if (messages.length > 0) {
+    const msPerCount = 1000;
+    gameCountdownContainer.textContent = messages.shift();
+    countdownTimerID = setTimeout(() => {
+      countdownTimerID = null;
+      gameCountdown(messages);
+    }, msPerCount);
+  } else {
+    gameStart();
+  }
+};
+
 const gameStart = () => {
+  isPlaying = true;
+  gameCountdownContainer.classList.remove(gameCountdownShowStyle);
   const intervalID = setInterval(onInterval, gameUpdateInterval);
   gameSessionIDs[intervalID] = true;
   spawnPlayer(player);
@@ -860,7 +852,9 @@ const init = () => {
 
   initGhosts();
   initPlayerLife();
-  gameStart();
+
+  gameCountdownContainer.classList.add(gameCountdownShowStyle);
+  gameCountdown(["READY", "OP"]);
 };
 
 buildGame();

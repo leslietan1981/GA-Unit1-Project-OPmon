@@ -5,9 +5,10 @@
 5. Back to Splash button on end screen
 6. Ghosts in tomb before spawning
 7. Game start countdown
-8. Player powerup visual, during and expiring
+8. Player powerup visual, during and expiring - DONE
 
 9. Ghosts roaming in the background at splash screen
 10. Ghosts returns to tomb (simple pathfinding) before start
 11. Ghosts returns to tomb when killed (simple pathfinding)
 12. Ghosts killed visual
+13. Audio
