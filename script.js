@@ -188,10 +188,21 @@ class AvatarBase {
 }
 
 class Player extends AvatarBase {
-  #recoveryStyle = "player-recovery";
-  #deadStyle = "player-dead";
+  #additionalStyles = {
+    limbo: "player-recovery",
+    dead: "player-dead",
+    powerUps: ["player-power-ghost-hunter"],
+  };
+  #blinkInterval = 100;
+  #blinkDuration = 1500;
   #isAlive = true;
-  #timerIDs = {};
+  #reviveTimeoutID = null;
+  #blinkObj = {
+    intervalID: null,
+    timeoutID: null,
+    styleToRemove: null,
+  };
+
   #powerUps = {};
 
   constructor() {
@@ -202,54 +213,94 @@ class Player extends AvatarBase {
     return this.#isAlive;
   }
 
-  recoveryMode() {
-    this.#isAlive = false;
-    this.element.classList.toggle(this.#recoveryStyle, true);
-    const timeoutID = setTimeout(() => {
-      this.#preRecoveryBlink();
-      delete this.#timerIDs[timeoutID];
-    }, 3000);
-    this.#timerIDs[timeoutID] = true;
+  #removeAllAdditionalStyles() {
+    for (const { styleKey, styleValue } of Object.entries(
+      this.#additionalStyles,
+    )) {
+      if (styleKey === "powerUps") {
+        for (const powerUpStyle of styleValue) {
+          this.element.classList.remove(powerUpStyle);
+        }
+      } else {
+        this.element.classList.remove(styleValue);
+      }
+    }
   }
 
-  #preRecoveryBlink() {
-    const intervalID = setInterval(() => {
-      this.element.classList.toggle(this.#recoveryStyle);
-    }, 100);
-    const timeoutID = setTimeout(() => {
-      this.revive();
-      delete this.#timerIDs[timeoutID];
-      clearInterval(intervalID);
-      delete this.#timerIDs[intervalID];
-    }, 1500);
-  }
-
-  revive() {
-    this.element.classList.remove(this.#recoveryStyle);
+  setAlive() {
     this.#isAlive = true;
-  }
-
-  dead() {
-    this.setDisplayedEyes("x");
-    this.element.classList.toggle(this.#deadStyle, true);
-    this.#isAlive = false;
-  }
-
-  alive() {
     this.resetDisplayedEyes();
-    this.element.classList.remove(this.#recoveryStyle);
-    this.element.classList.remove(this.#deadStyle);
-    this.#isAlive = true;
+    this.#removeAllAdditionalStyles();
+  }
+
+  setDead() {
+    this.#isAlive = false;
+    this.setDisplayedEyes("x");
+    this.element.classList.add(this.#additionalStyles.dead);
+  }
+
+  setLimbo() {
+    this.#isAlive = false;
+    this.element.classList.add(this.#additionalStyles.limbo);
+  }
+
+  revive(delayMs = 0) {
+    clearTimeout(this.#reviveTimeoutID);
+
+    if (delayMs > 0) {
+      this.#reviveTimeoutID = setTimeout(
+        () => {
+          this.#blinkFor(
+            this.#additionalStyles.limbo,
+            delayMs > this.#blinkDuration ? this.#blinkDuration : delayMs,
+            () => this.setAlive(),
+          );
+          this.#reviveTimeoutID = null;
+        },
+        Math.max(0, delayMs - this.#blinkDuration),
+      );
+    } else {
+      this.setAlive();
+    }
+  }
+
+  #stopCurrentBlink() {
+    clearTimeout(this.#blinkObj.timeoutID);
+    clearInterval(this.#blinkObj.intervalID);
+    this.element.classList.remove(this.#blinkObj.style);
+    this.#blinkObj.timeoutID = null;
+    this.#blinkObj.intervalID = null;
+    this.#blinkObj.callback = null;
+    this.#blinkObj.style = null;
+  }
+
+  #blinkFor(styleToRemove, duration, callback) {
+    this.#stopCurrentBlink();
+
+    this.#blinkObj.styleToRemove = styleToRemove;
+    this.#blinkObj.callback = callback;
+    this.#blinkObj.intervalID = setInterval(() => {
+      this.element.classList.toggle(styleToRemove);
+    }, this.#blinkInterval);
+
+    this.#blinkObj.timeoutID = setTimeout(() => {
+      this.#blinkObj.timeoutID = null;
+      clearInterval(this.#blinkObj.intervalID);
+      this.#blinkObj.intervalID = null;
+      callback();
+    }, duration);
   }
 
   addPower(powerType, rankUp = false) {
     this.#powerUps[powerType] = rankUp
       ? (this.#powerUps[powerType] ?? 0) + 1
       : 1;
+    this.element.classList.add(this.#additionalStyles.powerUps[powerType]);
   }
 
   removePower(powerType) {
     delete this.#powerUps[powerType];
+    this.element.classList.remove(this.#additionalStyles.powerUps[powerType]);
   }
 
   getPowerLevel(powerType) {
@@ -395,6 +446,7 @@ let lastPowerUpTimestamp = -1;
 
 const playerLifeStyle = "player-base";
 const playerMaxLives = 3;
+const playerRevivalDelay = 4 * 1000;
 const playerLives = [];
 
 const gameUpdateInterval = 200;
@@ -621,7 +673,7 @@ const checkGems = () => {
   if (lastGemTimestamp !== -1 && removedGems.length > 0) {
     if ((Date.now() - lastGemTimestamp) / gemCoolDownDuration >= 1) {
       addCollectibleBack(...removedGems.shift());
-      lastGemTimestamp = Date.now();
+      lastGemTimestamp = removedGems.length > 0 ? Date.now() : -1;
     }
   }
 };
@@ -630,7 +682,7 @@ const checkPowerUps = () => {
   if (lastPowerUpTimestamp !== -1 && removedPowerUps.length > 0) {
     if ((Date.now() - lastPowerUpTimestamp) / powerUpCoolDownDuration >= 1) {
       addCollectibleBack(...removedPowerUps.shift());
-      lastPowerUpTimestamp = Date.now();
+      lastPowerUpTimestamp = removedPowerUps.length > 0 ? Date.now() : -1;
     }
   }
 };
@@ -656,10 +708,12 @@ const checkTile = (tile) => {
           availableGhosts.push(ghost);
         }
       } else {
-        currentPlayerHealth--;
-        if (currentPlayerHealth >= 0) {
-          playerLives[currentPlayerHealth].dead();
-          currentPlayerHealth > 0 ? player.recoveryMode() : player.dead();
+        playerLives[--currentPlayerHealth].setDead();
+        if (currentPlayerHealth > 0) {
+          player.setLimbo();
+          player.revive(playerRevivalDelay);
+        } else {
+          player.setDead();
         }
       }
     }
@@ -744,7 +798,7 @@ const initGhosts = () => {
 const initPlayerLife = () => {
   for (const playerLife of playerLives) {
     playerHealthContainer.append(playerLife.element);
-    playerLife.alive();
+    playerLife.setAlive();
   }
   currentPlayerHealth = playerLives.length;
 };
