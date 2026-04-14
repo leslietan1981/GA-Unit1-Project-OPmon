@@ -5,18 +5,19 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>Level Design Tool</title>
     <link rel="stylesheet" href="style.css" />
+    <link rel="stylesheet" href="toolOverrides.css" />
   </head>
   <body>
     <div id="game">
-      <div id="maze"></div>
-      <div id="ui">
-        <label for="gameElement">Selected Tool:</label>
+      <div id="game-hud">
         <select id="gameElement">
           <option value="tileType">Tile Type</option>
           <option value="power-up">Power-up</option>
         </select>
+        <div></div>
         <input id="exportMazeData" type="button" value="Export Maze Data" />
       </div>
+      <div id="maze"></div>
     </div>
   </body>
   <script src="mazeLevelData.js"></script>

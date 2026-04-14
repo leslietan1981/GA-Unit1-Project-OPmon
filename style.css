@@ -183,3 +183,14 @@
   text-align: center;
   padding: 2rem;
 }
+
+h1,
+h2,
+h3 {
+  margin: auto;
+  padding: auto;
+}
+
+p {
+  margin: 2rem 0;
+}
