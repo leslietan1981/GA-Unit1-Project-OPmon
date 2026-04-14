@@ -444,6 +444,7 @@ const elapsedGameTimeContainer = document.querySelector("#elapsed-game-time");
 const gameSplashContainer = document.querySelector("#game-splash");
 const gameOverContainer = document.querySelector("#game-over");
 const gameCountdownContainer = document.querySelector("#game-countdown");
+const gameCountAnimationContainer = document.querySelector("#countdown-message");
 
 const mazeContainer = document.querySelector("#maze");
 
@@ -820,9 +821,12 @@ const initPlayerLife = () => {
 const gameCountdown = (messages) => {
   if (messages.length > 0) {
     const msPerCount = 1000;
-    gameCountdownContainer.textContent = messages.shift();
+    gameCountAnimationContainer.textContent = messages.shift();
+    gameCountAnimationContainer.classList.add("count-animation");
     countdownTimerID = setTimeout(() => {
       countdownTimerID = null;
+      gameCountAnimationContainer.classList.remove("count-animation");
+      void gameCountAnimationContainer.offsetWidth;
       gameCountdown(messages);
     }, msPerCount);
   } else {
