@@ -202,6 +202,7 @@ class Player extends AvatarBase {
     timeoutID: null,
     styleToRemove: null,
   };
+  #powerTimeoutID = null;
 
   #powerUps = {};
 
@@ -228,24 +229,34 @@ class Player extends AvatarBase {
   }
 
   setAlive() {
+    clearTimeout(this.#reviveTimeoutID);
+    this.#stopCurrentBlink();
+
     this.#isAlive = true;
     this.resetDisplayedEyes();
     this.#removeAllAdditionalStyles();
   }
 
   setDead() {
+    clearTimeout(this.#reviveTimeoutID);
+    this.#stopCurrentBlink();
+
     this.#isAlive = false;
     this.setDisplayedEyes("x");
     this.element.classList.add(this.#additionalStyles.dead);
   }
 
   setLimbo() {
+    clearTimeout(this.#reviveTimeoutID);
+    this.#stopCurrentBlink();
+
     this.#isAlive = false;
     this.element.classList.add(this.#additionalStyles.limbo);
   }
 
   revive(delayMs = 0) {
     clearTimeout(this.#reviveTimeoutID);
+    this.#stopCurrentBlink();
 
     if (delayMs > 0) {
       this.#reviveTimeoutID = setTimeout(
@@ -291,19 +302,51 @@ class Player extends AvatarBase {
     }, duration);
   }
 
-  addPower(powerType, rankUp = false) {
-    this.#powerUps[powerType] = rankUp
-      ? (this.#powerUps[powerType] ?? 0) + 1
-      : 1;
+  addPower(powerType, levelUp = false) {
+    clearTimeout(this.#powerTimeoutID);
+    this.#stopCurrentBlink();
+
+    this.#powerUps[powerType] = this.#powerUps[powerType] ?? 1;
+    if (levelUp) {
+      this.increasePowerLevel(powerType);
+    }
+
     this.element.classList.add(this.#additionalStyles.powerUps[powerType]);
   }
 
-  removePower(powerType) {
-    delete this.#powerUps[powerType];
-    this.element.classList.remove(this.#additionalStyles.powerUps[powerType]);
+  removePower(powerType, delayMs = 0) {
+    clearTimeout(this.#powerTimeoutID);
+    this.#stopCurrentBlink();
+
+    const removeFn = () => {
+      delete this.#powerUps[powerType];
+      this.element.classList.remove(this.#additionalStyles.powerUps[powerType]);
+    };
+
+    if (delayMs > 0) {
+      this.#powerTimeoutID = setTimeout(
+        () => {
+          this.#blinkFor(
+            this.#additionalStyles.powerUps[powerType],
+            delayMs > this.#blinkDuration ? this.#blinkDuration : delayMs,
+            () => removeFn(),
+          );
+          this.#powerTimeoutID = null;
+        },
+        Math.max(0, delayMs - this.#blinkDuration),
+      );
+    } else {
+      removeFn();
+    }
   }
 
-  getPowerLevel(powerType) {
+  increasePowerLevel(powerType) {
+    if (this.#powerUps[powerType]) {
+      this.#powerUps[powerType]++;
+    }
+  }
+
+  hasPowerType(powerType) {
     return this.#powerUps[powerType] ?? 0;
   }
 }
@@ -644,15 +687,8 @@ const addCollectibleBack = (collectible, tile) => {
 };
 
 const addPowerForDuration = (powerUp) => {
-  console.log(gamePowerTimeoutIDs[powerUp.powerType]);
-  clearTimeout(gamePowerTimeoutIDs[powerUp.powerType]);
-
   player.addPower(powerUp.powerType);
-  gamePowerTimeoutIDs[powerUp.powerType] = setTimeout(() => {
-    player.removePower(powerUp.powerType);
-    gamePowerTimeoutIDs[powerUp.powerType] = null;
-    console.log("power over");
-  }, powerUp.duration);
+  player.removePower(powerUp.powerType, powerUp.duration);
 };
 
 const addScore = (value) => {
@@ -700,11 +736,12 @@ const checkTile = (tile) => {
       collectCollectible(tile.collectible);
     }
     if (tile.hasGhost()) {
-      if (player.getPowerLevel(0) > 0) {
+      const ghostHunterLevel = player.hasPowerType(0);
+      if (ghostHunterLevel) {
         for (const ghost of tile.removeAllGhosts()) {
           ghost.kill();
-          addScore(ghost.value * player.getPowerLevel(0));
-          player.addPower(0, true);
+          addScore(ghost.value * ghostHunterLevel);
+          player.increasePowerLevel(0);
           availableGhosts.push(ghost);
         }
       } else {
