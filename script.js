@@ -401,7 +401,7 @@ const gameUpdateInterval = 200;
 const gameSessionIDs = {};
 const gamePowerTimeoutIDs = { 0: null };
 
-const gameScoreDefaultString = "0000000000";
+const gameScoreDefaultString = "0000000";
 
 let isPlaying = false;
 let currentPlayerHealth = 0;
@@ -656,7 +656,7 @@ const checkTile = (tile) => {
           availableGhosts.push(ghost);
         }
       } else {
-        --currentPlayerHealth;
+        currentPlayerHealth--;
         if (currentPlayerHealth >= 0) {
           playerLives[currentPlayerHealth].dead();
           currentPlayerHealth > 0 ? player.recoveryMode() : player.dead();
