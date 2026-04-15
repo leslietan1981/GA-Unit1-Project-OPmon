@@ -1,3 +1,7 @@
+.is-hidden {
+  display: none;
+}
+
 #game {
   display: grid;
   justify-content: center;
@@ -149,27 +153,23 @@
   color: rgb(50, 50, 50);
 }
 
-#player-health {
+#hud-player-health {
   justify-self: start;
   display: grid;
   grid: repeat(1, 2rem) / repeat(3, 2rem);
   gap: 1rem;
 }
 
-#player-health .player-eye {
+#hud-player-health .player-eye {
   font-size: 0.6rem;
 }
 
-#elapsed-game-time {
+#hud-elapsed-game-time {
   justify-self: end;
 }
 
-.score-zero-prefix {
+.hud-score-zero-prefix {
   color: rgb(180, 180, 180);
-}
-
-.game-screen-default {
-  display: none;
 }
 
 .game-screen-show {
@@ -214,6 +214,14 @@ h3 {
   padding: auto;
 }
 
+#game-foot {
+  font:
+    1rem "Source Code Pro",
+    monospace;
+  text-align: center;
+  padding: 1rem;
+}
+
 .count-animation {
   animation: countdown-fade 1s ease-in forwards;
 }
@@ -234,4 +242,22 @@ h3 {
     transform: scale(0.95);
     opacity: 0.6;
   }
+}
+
+#initials-maze {
+  justify-self: center;
+  display: grid;
+  grid: 3rem auto / repeat(3, 3rem);
+  border: 0.5rem solid rgb(20, 20, 20);
+  font-family: "Source Code Pro", monospace;
+}
+
+.initials-char {
+  align-self: center;
+  display: grid;
+  justify-content: center;
+  align-items: center;
+  color: white;
+  font-size: 2rem;
+  font-weight: 700;
 }

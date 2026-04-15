@@ -433,34 +433,42 @@ class PowerUp extends Collectible {
 // ---------- End of Classes ----------
 // ------------------------------------
 
-// -- Hud Containers --
-const playerHealthContainer = document.querySelector("#player-health");
-const playerScoreContainer = document.querySelector("#player-score");
-const playerScoreZeroPrefixContainer = document.querySelector(".score-zero-prefix");
-const playerScoreCurrentContainer = document.querySelector(".score-current");
-const elapsedGameTimeContainer = document.querySelector("#elapsed-game-time");
+// -- General variables
+const directionalKeys = ["w", "a", "s", "d"];
+const moveKeys = ["o", "p"];
 
-// -- Game Screen Containers --
+// -- Out-of-game variables
 const gameSplashContainer = document.querySelector("#game-splash");
-const gameOverContainer = document.querySelector("#game-over");
+const gameSplashLeaderboardContainer = document.querySelector("#game-splash-leaderboard");
 const gameCountdownContainer = document.querySelector("#game-countdown");
 const gameCountAnimationContainer = document.querySelector("#countdown-message");
+const gameOverContainer = document.querySelector("#game-over");
+const gameOverLeaderboardContainer = document.querySelector("#game-over-leaderboard");
+const initialsContainer = document.querySelector("#leaderboard-initials");
+const inputContainers = [...initialsContainer.querySelectorAll(".initials-char")];
 
-const mazeContainer = document.querySelector("#maze");
-
+const hiddenStyle = "is-hidden";
 const gameScreenShowStyle = "game-screen-show";
 const gameCountdownShowStyle = "game-countdown-show";
 
+const charactersList = "abcdefghijklmnopqrstuvwxyz1234567890~!@#$.-:".toUpperCase().split("");
+
 let countdownTimerID = null;
+
+// -- In-game variables
+const playerHealthContainer = document.querySelector("#hud-player-health");
+const playerScoreContainer = document.querySelector("#hud-player-score");
+const playerScoreZeroPrefixContainer = document.querySelector(".hud-score-zero-prefix");
+const playerScoreCurrentContainer = document.querySelector(".hud-score-current");
+const elapsedGameTimeContainer = document.querySelector("#hud-elapsed-game-time");
+
+const mazeContainer = document.querySelector("#maze");
 
 const mazeSize = { rows: 13, columns: 21 };
 const mazeTiles = [];
 
 const player = new Player();
-const directionalKeys = ["w", "a", "s", "d"];
-let directionalKeysDown = 0;
-const moveKeys = ["o", "p"];
-let lastMoveKey = "";
+const inGameKeys = { directionalKeysDown: 0, lastMoveKey: "" };
 
 let ghostSpawningTile = null;
 const ghosts = [new Ghost(), new Ghost(), new Ghost(), new Ghost(), new Ghost()];
@@ -683,11 +691,7 @@ const addScore = (value) => {
 };
 
 const updateScore = (value) => {
-  const digitsLength = value.toString().length;
-  playerScoreZeroPrefixContainer.textContent = gameScoreDefaultString.slice(
-    0,
-    gameScoreDefaultString.length - digitsLength,
-  );
+  playerScoreZeroPrefixContainer.textContent = getScoreZerosPrefix(value);
   playerScoreCurrentContainer.textContent = value;
 };
 
@@ -736,44 +740,44 @@ const checkTile = (tile) => {
   }
 };
 
-const checkGame = () => {
+const checkGameOver = () => {
   if (isPlaying && currentPlayerHealth <= 0) {
-    isPlaying = false;
-    gameOverContainer.classList.add(gameScreenShowStyle);
+    gameOver();
   }
 };
 
 const onInterval = () => {
-  elapsedTime = Date.now() - gameStartTime;
-  elapsedGameTimeContainer.textContent = new Date(elapsedTime).toISOString().slice(14, 19);
+  if (isPlaying) {
+    elapsedTime = Date.now() - gameStartTime;
+    elapsedGameTimeContainer.textContent = getTimeMMSS(elapsedTime);
+  }
   checkGems();
   checkPowerUps();
   checkGhosts();
-  checkGame();
+  checkGameOver();
 };
 
 // ---------- Game Interactions ----------
 
-const handleKeydown = (e) => {
+const handleKeyDown = (e) => {
   if (!isPlaying) {
     return;
   }
+
   if (directionalKeys.includes(e.key)) {
     player.updateDirection(directionalKeys.indexOf(e.key));
     if (!e.repeat) {
-      directionalKeysDown++;
+      inGameKeys.directionalKeysDown++;
     }
-  }
-
-  if (moveKeys.includes(e.key)) {
+  } else if (moveKeys.includes(e.key)) {
     // if (lastMoveKey === moveKeys[0] && e.key === moveKeys[1]) {
-    if (lastMoveKey !== e.key) {
+    if (inGameKeys.lastMoveKey !== e.key) {
       const destinationTile = checkPathInDirection(player.tile, player.direction);
       if (destinationTile) {
         moveAvatarTo(player, destinationTile);
       }
     }
-    lastMoveKey = e.key;
+    inGameKeys.lastMoveKey = e.key;
   }
 };
 
@@ -782,8 +786,8 @@ const handleKeyUp = (e) => {
     return;
   }
   if (directionalKeys.includes(e.key)) {
-    if (directionalKeysDown > 0) {
-      if (--directionalKeysDown === 0) {
+    if (inGameKeys.directionalKeysDown > 0) {
+      if (--inGameKeys.directionalKeysDown === 0) {
         player.updateDirection();
       }
     }
@@ -798,12 +802,186 @@ const handleGameStart = (e) => {
 };
 
 const addHandlers = () => {
-  document.addEventListener("keydown", handleKeydown);
+  document.addEventListener("keydown", handleKeyDown);
   document.addEventListener("keyup", handleKeyUp);
   document.querySelector("#game-start-button").addEventListener("click", handleGameStart);
 };
 
+// ---------- Game Results ----------
+
+const resultsScoreContainer = document.querySelector(".results-score-time");
+const updateResults = () => {
+  resultsScoreContainer.textContent = `${getScoreZerosPrefix(currentScore)}${currentScore} | ${getTimeMMSS(elapsedTime)}`;
+};
+
+// ---------- Leaderboard ----------
+
+const initialsMazeContainer = document.querySelector("#initials-maze");
+const initialsTiles = [];
+const initialsPlayer = new Player();
+const outOfGameKeys = { directionalKeysDown: 0, lastMoveKey: "" };
+const leaderboardObj = {};
+
+const getLeaderboardData = () => {
+  if (typeof Storage !== "undefined") {
+    const retrievedData = localStorage.getItem("leaderboardData");
+    if (retrievedData) {
+      return [...JSON.parse(retrievedData)];
+    }
+  }
+  return [
+    ["AAA", "10000", "60000"],
+    ["BBB", "5000", "50000"],
+    ["CCC", "1000", "40000"],
+  ];
+};
+
+const getRankString = (idx, initialsStr, scoreValue, timeValue) => {
+  return `${idx + 1}. ${initialsStr} | ${getScoreZerosPrefix(scoreValue) + scoreValue} | ${getTimeMMSS(parseInt(timeValue))}`;
+};
+
+const createLeaderBoardListing = (data, listItems) => {
+  const container = document.createElement("div");
+  container.classList.add("leaderboard-list");
+
+  data.forEach(([lbInitials, lbScore, lbTime], i) => {
+    const rankElement = document.createElement("div");
+    rankElement.textContent = getRankString(i, lbInitials, lbScore, lbTime);
+    container.append(rankElement);
+    listItems.push(rankElement);
+  });
+  return container;
+};
+
+const initLeaderboard = () => {
+  leaderboardObj.data = getLeaderboardData();
+  leaderboardObj.listItems = [];
+  leaderboardObj.container = createLeaderBoardListing(leaderboardObj.data, leaderboardObj.listItems);
+};
+
+const checkEligibleForLeaderboard = () => {
+  for (let i = 0; i < leaderboardObj.data.length; i++) {
+    const lbScore = parseInt(leaderboardObj.data[i][1]);
+    const lbTime = parseInt(leaderboardObj.data[i][2]);
+    if (currentScore > lbScore || (currentScore == lbScore && elapsedTime > lbTime)) {
+      return i;
+    }
+  }
+  return -1;
+};
+
+const updateLeaderboard = () => {
+  if (initialsPlayer.rank !== -1) {
+    const initials = leaderboardObj.data.splice(initialsPlayer.rank, 0, [getInitials(), currentScore, elapsedTime]);
+    leaderboardObj.data.pop();
+
+    leaderboardObj.data.forEach(([lbInitials, lbScore, lbTime], i) => {
+      leaderboardObj.listItems[i].textContent = getRankString(i, lbInitials, lbScore, lbTime);
+    });
+
+    if (typeof Storage !== "undefined") {
+      localStorage.setItem("leaderboardData", JSON.stringify(leaderboardObj.data));
+    }
+  }
+};
+
+const buildInitialsInput = () => {
+  const charDivs = [];
+  for (let i = 0; i < 3; i++) {
+    const charDiv = document.createElement("div");
+    charDiv.classList.add("initials-char");
+    charDiv.textContent = charactersList[0];
+    charDivs.push(charDiv);
+
+    const tile = new MazeTile(0, i, 0);
+    tile.divRef = charDiv;
+    initialsTiles.push(tile);
+    initialsMazeContainer.append(tile.element);
+  }
+  initialsMazeContainer.append(...charDivs);
+
+  initialsTiles[0].addPlayer(initialsPlayer);
+  initialsPlayer.tile = initialsTiles[0];
+};
+
+const getCharacter = (currentChar, isNext = true) => {
+  const currentIdx = charactersList.indexOf(currentChar);
+  if (currentIdx === -1) {
+    return charactersList[isNext ? 0 : charactersList.length - 1];
+  } else {
+    return charactersList[(currentIdx + (isNext ? 1 : -1) + charactersList.length) % charactersList.length];
+  }
+};
+
+const getInitials = () => {
+  let initialsStr = "";
+  for (const tile of initialsTiles) {
+    initialsStr += tile.divRef.textContent;
+  }
+  return initialsStr;
+};
+
+const handleInitialsKeyDown = (e) => {
+  if (directionalKeys.includes(e.key)) {
+    initialsPlayer.updateDirection(directionalKeys.indexOf(e.key));
+    if (!e.repeat) {
+      outOfGameKeys.directionalKeysDown++;
+    }
+  } else if (moveKeys.includes(e.key)) {
+    if (outOfGameKeys.lastMoveKey !== e.key) {
+      let [, colIdx] = initialsPlayer.tile.getPosition();
+      if (initialsPlayer.direction % 2 === 0) {
+        const currentValue = initialsPlayer.tile.divRef.textContent;
+        initialsPlayer.tile.divRef.textContent = getCharacter(currentValue, initialsPlayer.direction === 0);
+      } else {
+        colIdx += initialsPlayer.direction - 2;
+        if (colIdx >= 0 && colIdx < initialsTiles.length) {
+          initialsPlayer.tile.removePlayer();
+          initialsTiles[colIdx].addAvatar(initialsPlayer);
+          initialsPlayer.tile = initialsTiles[colIdx];
+        }
+      }
+    }
+    outOfGameKeys.lastMoveKey = e.key;
+  } else if (e.key === "Enter") {
+    updateLeaderboard();
+    document.removeEventListener("keydown", handleInitialsKeyDown);
+    document.removeEventListener("keyup", handleInitialsKeyUp);
+    initialsPlayer.setDead();
+  }
+};
+
+const handleInitialsKeyUp = (e) => {
+  if (directionalKeys.includes(e.key)) {
+    if (outOfGameKeys.directionalKeysDown > 0) {
+      if (--outOfGameKeys.directionalKeysDown === 0) {
+        initialsPlayer.updateDirection();
+      }
+    }
+  }
+};
+
+// ---------- Utilities ----------
+
+const getScoreZerosPrefix = (score) => {
+  return gameScoreDefaultString.slice(0, gameScoreDefaultString.length - score.toString().length);
+};
+
+const getTimeMMSS = (timeMs) => {
+  return new Date(timeMs).toISOString().slice(14, 19);
+};
+
 // ---------- Game Core ----------
+
+const initPreGame = () => {
+  initLeaderboard();
+  buildInitialsInput();
+  buildGame();
+
+  gameSplashLeaderboardContainer.append(leaderboardObj.container);
+
+  addHandlers();
+};
 
 const initGhosts = () => {
   availableGhosts.length = 0;
@@ -843,6 +1021,23 @@ const gameStart = () => {
   gameStartTime = Date.now();
 };
 
+const gameOver = () => {
+  isPlaying = false;
+  gameOverContainer.classList.add(gameScreenShowStyle);
+  gameOverLeaderboardContainer.append(leaderboardObj.container);
+
+  updateResults();
+
+  initialsPlayer.rank = checkEligibleForLeaderboard();
+  if (initialsPlayer.rank !== -1) {
+    initialsContainer.classList.remove(hiddenStyle);
+    document.addEventListener("keydown", handleInitialsKeyDown);
+    document.addEventListener("keyup", handleInitialsKeyUp);
+  } else {
+    initialsContainer.classList.add(hiddenStyle);
+  }
+};
+
 // const clearSessionTimer = () => {
 //   for (const timerID in gameSessionTimerIDs) {
 //     clearInterval(timerID);
@@ -851,7 +1046,7 @@ const gameStart = () => {
 // };
 
 const init = () => {
-  directionalKeysDown = 0;
+  inGameKeys.directionalKeysDown = 0;
   currentScore = 0;
 
   initGhosts();
@@ -861,5 +1056,4 @@ const init = () => {
   gameCountdown(["READY", "OP"]);
 };
 
-buildGame();
-addHandlers();
+initPreGame();

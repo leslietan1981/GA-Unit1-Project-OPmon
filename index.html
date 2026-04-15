@@ -15,42 +15,44 @@
   <body>
     <div id="game">
       <div id="game-hud">
-        <div id="player-health"></div>
-        <div id="player-score">
-          <span class="score-zero-prefix">0</span><span class="score-current"></span>
+        <div id="hud-player-health"></div>
+        <div id="hud-player-score">
+          <span class="hud-score-zero-prefix">0</span><span class="hud-score-current"></span>
         </div>
-        <div id="elapsed-game-time"><label>0:00</label></div>
+        <div id="hud-elapsed-game-time"><label>0:00</label></div>
       </div>
       <div id="maze"></div>
       <div id="game-foot">
-        Controls: Hold WASD for direction, press OP alternately to move in direction.
+        Controls: Hold WASD for direction and press OP alternately to move in the held direction.
       </div>
-      <div id="game-splash" class="game-screen-default game-screen-show">
+      <div id="game-splash" class="is-hidden game-screen-show">
+        <!-- <div id="game-splash" class="is-hidden"> -->
         <div id="game-splash-prompt" class="game-prompt">
-          <h1>OP Monster</h1>
-          <br />
-          <h3>Top 3 OP Monsters</h3>
-          <span>1. AAA | 0010000000 | Time: 1:00</span>
-          <span>2. BBB | 0009000000 | Time: 0:50</span>
-          <span>3. CCC | 0008000000 | Time: 0:40</span>
-          <br />
+          <div id="game-splash-title">OP MONSTER</div>
+          <div id="game-splash-leaderboard">
+            <div class="leaderboard-title">Top 3 OP</div>
+          </div>
           <input type="button" id="game-start-button" value="Start Game" />
         </div>
       </div>
-      <div id="game-countdown" class="game-screen-default">
+      <div id="game-countdown" class="is-hidden">
         <div id="countdown-message"></div>
       </div>
-      <div id="game-over" class="game-screen-default">
-        <div id="gameover-prompt" class="game-prompt">
-          <h2>GAME OVER</h2>
-          <br />
-          <h3>Top 3 OP Monsters</h3>
-          <span>1. AAA | 0010000000 | Time: 1:00</span>
-          <span>2. BBB | 0009000000 | Time: 0:50</span>
-          <span>3. CCC | 0008000000 | Time: 0:40</span>
-          <br />
-          <h3>Your Score</h3>
-          <span>_ _ _ | 0000000000 | Time: 0:00</span>
+      <!-- <div id="game-over" class="is-hidden game-screen-show"> -->
+      <div id="game-over" class="is-hidden">
+        <div id="game-over-prompt" class="game-prompt">
+          <div id="game-over-title">GAME OVER</div>
+          <div id="game-over-leaderboard">
+            <div class="leaderboard-title">Top 3 OP</div>
+          </div>
+          <div id="game-results">
+            <div class="results-title">Your Score</div>
+            <div class="results-score-time">0000000000 | Time: 0:00</div>
+          </div>
+          <div id="leaderboard-initials" class="is-hidden">
+            <div class="initials-title">Enter your initials</div>
+            <div id="initials-maze"></div>
+          </div>
         </div>
       </div>
     </div>
