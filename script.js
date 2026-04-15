@@ -122,6 +122,12 @@ class MazeTile {
         break;
     }
   }
+
+  clear() {
+    this.removePlayer();
+    this.removeAllGhosts();
+    this.removeCollectible();
+  }
 }
 
 class AvatarBase {
@@ -210,7 +216,7 @@ class Player extends AvatarBase {
   }
 
   #removeAllAdditionalStyles() {
-    for (const { styleKey, styleValue } of Object.entries(this.#additionalStyles)) {
+    for (const [styleKey, styleValue] of Object.entries(this.#additionalStyles)) {
       if (styleKey === "powerUps") {
         for (const powerUpStyle of styleValue) {
           this.element.classList.remove(powerUpStyle);
@@ -491,11 +497,12 @@ const removedPowerUps = [];
 let lastPowerUpTimestamp = -1;
 
 const playerLifeStyle = "player-base";
-const playerMaxLives = 3;
+const playerMaxLives = 1;
 const playerRevivalDelay = 4 * 1000;
 const playerLives = [];
 
 const gameUpdateInterval = 200;
+let gameIntervalID = null;
 const gameSessionIDs = {};
 const gamePowerTimeoutIDs = { 0: null };
 
@@ -531,22 +538,30 @@ const buildMaze = () => {
 };
 
 const createPowerUps = () => {
+  const stockPowerUps = [...powerUps];
   for (const [tile, powerType] of powerUpTiles) {
-    const powerup = new PowerUp(powerUpsConfig[powerType]);
+    let powerup = stockPowerUps.shift();
+    if (!powerup) {
+      powerup = new PowerUp(powerUpsConfig[powerType]);
+      powerUps.push(powerup);
+    }
     tile.addCollectible(powerup);
     powerup.tile = tile;
-    powerUps.push(powerup);
   }
 };
 
 const createGems = () => {
+  const stockGems = [...gems];
   for (const rowTiles of mazeTiles) {
     for (const tile of rowTiles) {
       if (tile.isPath && !tile.hasCollectible()) {
-        const gem = new Gem();
+        let gem = stockGems.shift();
+        if (!gem) {
+          gem = new Gem();
+          gems.push(gem);
+        }
         tile.addCollectible(gem);
         gem.tile = tile;
-        gems.push(gem);
       }
     }
   }
@@ -638,6 +653,8 @@ const ghostDecision = (ghost) => {
 };
 
 const spawnPlayer = () => {
+  player.setAlive();
+  player.updateDirection();
   const tile = mazeTiles[mazeSize.rows - 1][Math.floor(mazeSize.columns / 2)];
   tile.addPlayer(player);
   player.tile = tile;
@@ -801,10 +818,26 @@ const handleGameStart = (e) => {
   }
 };
 
+const handleRestart = (e) => {
+  gameOverContainer.classList.remove(gameScreenShowStyle);
+
+  gameSplashLeaderboardContainer.append(leaderboardObj.container);
+  gameSplashContainer.classList.add(gameScreenShowStyle);
+
+  restartMaze();
+  for (const playerLife of playerLives) {
+    playerLife.element.remove();
+  }
+
+  updateScore((currentScore = 0));
+  elapsedGameTimeContainer.textContent = getTimeMMSS((elapsedTime = 0));
+};
+
 const addHandlers = () => {
   document.addEventListener("keydown", handleKeyDown);
   document.addEventListener("keyup", handleKeyUp);
   document.querySelector("#game-start-button").addEventListener("click", handleGameStart);
+  document.querySelector("#game-home-button").addEventListener("click", handleRestart);
 };
 
 // ---------- Game Results ----------
@@ -980,12 +1013,30 @@ const initPreGame = () => {
 
   gameSplashLeaderboardContainer.append(leaderboardObj.container);
 
+  updateScore((currentScore = 0));
+  elapsedGameTimeContainer.textContent = getTimeMMSS((elapsedTime = 0));
+
   addHandlers();
 };
 
 const initGhosts = () => {
   availableGhosts.length = 0;
   availableGhosts.push(...ghosts);
+};
+
+const restartMaze = () => {
+  for (const ghost of ghosts) {
+    ghost.kill();
+  }
+
+  for (const rowTiles of mazeTiles) {
+    for (const tile of rowTiles) {
+      tile.clear();
+    }
+  }
+
+  createPowerUps();
+  createGems();
 };
 
 const initPlayerLife = () => {
@@ -1015,13 +1066,13 @@ const gameCountdown = (messages) => {
 const gameStart = () => {
   isPlaying = true;
   gameCountdownContainer.classList.remove(gameCountdownShowStyle);
-  const intervalID = setInterval(onInterval, gameUpdateInterval);
-  gameSessionIDs[intervalID] = true;
+  gameIntervalID = setInterval(onInterval, gameUpdateInterval);
   spawnPlayer(player);
   gameStartTime = Date.now();
 };
 
 const gameOver = () => {
+  clearInterval(gameIntervalID);
   isPlaying = false;
   gameOverContainer.classList.add(gameScreenShowStyle);
   gameOverLeaderboardContainer.append(leaderboardObj.container);
@@ -1038,16 +1089,10 @@ const gameOver = () => {
   }
 };
 
-// const clearSessionTimer = () => {
-//   for (const timerID in gameSessionTimerIDs) {
-//     clearInterval(timerID);
-//     delete gameSessionTimerIDs[timerID];
-//   }
-// };
-
 const init = () => {
   inGameKeys.directionalKeysDown = 0;
   currentScore = 0;
+  elapsedTime = 0;
 
   initGhosts();
   initPlayerLife();
