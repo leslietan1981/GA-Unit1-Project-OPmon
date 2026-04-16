@@ -844,7 +844,7 @@ const addHandlers = () => {
 
 const resultsScoreContainer = document.querySelector(".results-score-time");
 const updateResults = () => {
-  resultsScoreContainer.textContent = `${getScoreZerosPrefix(currentScore)}${currentScore} | ${getTimeMMSS(elapsedTime)}`;
+  resultsScoreContainer.textContent = `Your score: ${getScoreZerosPrefix(currentScore)}${currentScore} | ${getTimeMMSS(elapsedTime)}`;
 };
 
 // ---------- Leaderboard ----------
@@ -854,17 +854,20 @@ const initialsTiles = [];
 const initialsPlayer = new Player();
 const outOfGameKeys = { directionalKeysDown: 0, lastMoveKey: "" };
 const leaderboardObj = {};
+const leaderboardListStyle = "leaderboard-list";
+const initialsCharStyle = "initials-char";
+const countdownAnimationStyle = "count-animation";
 
-const getLeaderboardData = () => {
-  if (typeof Storage !== "undefined") {
+const getLeaderboardData = (resetData = false) => {
+  if (typeof Storage !== "undefined" && !resetData) {
     const retrievedData = localStorage.getItem("leaderboardData");
     if (retrievedData) {
       return [...JSON.parse(retrievedData)];
     }
   }
   return [
-    ["AAA", "10000", "60000"],
-    ["BBB", "5000", "50000"],
+    ["AAA", "3000", "60000"],
+    ["BBB", "2000", "50000"],
     ["CCC", "1000", "40000"],
   ];
 };
@@ -875,7 +878,7 @@ const getRankString = (idx, initialsStr, scoreValue, timeValue) => {
 
 const createLeaderBoardListing = (data, listItems) => {
   const container = document.createElement("div");
-  container.classList.add("leaderboard-list");
+  container.classList.add(leaderboardListStyle);
 
   data.forEach(([lbInitials, lbScore, lbTime], i) => {
     const rankElement = document.createElement("div");
@@ -886,8 +889,8 @@ const createLeaderBoardListing = (data, listItems) => {
   return container;
 };
 
-const initLeaderboard = () => {
-  leaderboardObj.data = getLeaderboardData();
+const initLeaderboard = (clearData = false) => {
+  leaderboardObj.data = getLeaderboardData(clearData);
   leaderboardObj.listItems = [];
   leaderboardObj.container = createLeaderBoardListing(leaderboardObj.data, leaderboardObj.listItems);
 };
@@ -922,7 +925,7 @@ const buildInitialsInput = () => {
   const charDivs = [];
   for (let i = 0; i < 3; i++) {
     const charDiv = document.createElement("div");
-    charDiv.classList.add("initials-char");
+    charDiv.classList.add(initialsCharStyle);
     charDiv.textContent = charactersList[0];
     charDivs.push(charDiv);
 
@@ -1006,8 +1009,8 @@ const getTimeMMSS = (timeMs) => {
 
 // ---------- Game Core ----------
 
-const initPreGame = () => {
-  initLeaderboard();
+const initPreGame = (clearData = false) => {
+  initLeaderboard(clearData);
   buildInitialsInput();
   buildGame();
 
@@ -1051,10 +1054,10 @@ const gameCountdown = (messages) => {
   if (messages.length > 0) {
     const msPerCount = 1000;
     gameCountAnimationContainer.textContent = messages.shift();
-    gameCountAnimationContainer.classList.add("count-animation");
+    gameCountAnimationContainer.classList.add(countdownAnimationStyle);
     countdownTimerID = setTimeout(() => {
       countdownTimerID = null;
-      gameCountAnimationContainer.classList.remove("count-animation");
+      gameCountAnimationContainer.classList.remove(countdownAnimationStyle);
       void gameCountAnimationContainer.offsetWidth;
       gameCountdown(messages);
     }, msPerCount);
@@ -1101,4 +1104,4 @@ const init = () => {
   gameCountdown(["READY", "OP"]);
 };
 
-initPreGame();
+initPreGame(true);

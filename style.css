@@ -188,10 +188,31 @@
   display: flex;
   flex-direction: column;
   justify-content: space-between;
+  row-gap: 1rem;
   background-color: black;
   color: white;
   text-align: center;
-  padding: 2rem;
+  padding: 2rem 5rem;
+}
+
+.prompt-title {
+  font-size: 3rem;
+  font-weight: 800;
+}
+
+.leaderboard-group {
+  border: 0.2rem dotted white;
+  padding: 1rem;
+  margin-bottom: 0.5rem;
+}
+
+.prompt-sub-title {
+  font-size: 2rem;
+  font-weight: 700;
+}
+
+.leaderboard-list {
+  padding: 1rem;
 }
 
 .game-countdown-show {
@@ -244,12 +265,18 @@ h3 {
   }
 }
 
+.results-score-time {
+  font-size: 1.2rem;
+}
+
 #initials-maze {
   justify-self: center;
   display: grid;
   grid: 3rem auto / repeat(3, 3rem);
-  border: 0.5rem solid rgb(20, 20, 20);
+  border: 0.5rem solid white;
   font-family: "Source Code Pro", monospace;
+  margin-top: 0.6rem;
+  margin-bottom: 0.6rem;
 }
 
 .initials-char {
@@ -260,4 +287,8 @@ h3 {
   color: white;
   font-size: 2rem;
   font-weight: 700;
+}
+
+#game-results {
+  margin-bottom: 1rem;
 }
