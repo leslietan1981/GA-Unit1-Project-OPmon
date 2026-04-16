@@ -1,3 +1,27 @@
+:root {
+  --bg-main: #07040f;
+  --bg-surface: #120a24;
+  --bg-panel: rgba(8, 12, 26, 0.92);
+  --grid-line: #1b2c44;
+  --neon-cyan: #00f5ff;
+  --neon-magenta: #ff2bd6;
+  --neon-lime: #b7ff00;
+  --danger-red: #ff3b4a;
+  --text-main: #eaf7ff;
+  --text-muted: #8aa3bf;
+}
+
+body {
+  margin: 0;
+  min-height: 100vh;
+  background:
+    radial-gradient(circle at 20% 15%, rgba(0, 245, 255, 0.1), transparent 35%),
+    radial-gradient(circle at 80% 0%, rgba(255, 43, 214, 0.12), transparent 30%),
+    linear-gradient(180deg, #020109 0%, var(--bg-main) 65%, #040914 100%);
+  color: var(--text-main);
+  font-family: "Share Tech Mono", monospace;
+}
+
 .is-hidden {
   display: none;
 }
@@ -5,20 +29,44 @@
 #game {
   display: grid;
   justify-content: center;
+  position: relative;
+  isolation: isolate;
+  padding: 1rem;
+}
+
+#game::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  z-index: 3;
+  background-image: repeating-linear-gradient(
+    to bottom,
+    rgba(234, 247, 255, 0.05) 0,
+    rgba(234, 247, 255, 0.05) 1px,
+    transparent 2px,
+    transparent 4px
+  );
+  opacity: 0.2;
 }
 
 #maze {
   display: grid;
   grid: repeat(13, 3rem) / repeat(21, 3rem);
-  border: 0.5rem solid rgb(20, 20, 20);
-  font-family: "Source Code Pro", monospace;
+  border: 0.35rem solid var(--neon-cyan);
+  box-shadow:
+    0 0 12px rgba(0, 245, 255, 0.55),
+    0 0 26px rgba(255, 43, 214, 0.25);
+  font-family: "Share Tech Mono", monospace;
+  background-color: #050916;
   grid-area: 2 / 1;
+  z-index: 1;
 }
 
 .maze-path {
   display: grid;
-  background-color: rgb(230, 220, 220);
-  border: 1px dashed rgb(210, 210, 210);
+  background-color: #050d1f;
+  border: 1px dashed rgba(0, 245, 255, 0.25);
 }
 
 .maze-path > * {
@@ -26,39 +74,43 @@
 }
 
 .maze-wall {
-  background-color: rgb(50, 50, 50);
-  border: 1px solid rgb(210, 210, 210);
+  background: linear-gradient(140deg, rgba(0, 245, 255, 0.22) 0%, rgba(0, 245, 255, 0.1) 100%);
+  border: 1px solid rgba(0, 245, 255, 0.55);
+  box-shadow:
+    inset 0 0 8px rgba(0, 245, 255, 0.28),
+    inset 0 0 2px rgba(0, 0, 0, 0.35);
 }
 
 .maze-tomb-space {
   display: grid;
-  background-color: rgb(220, 210, 210);
-  border: 1px dashed rgb(210, 210, 210);
+  background-color: #130d27;
+  border: 1px dashed rgba(255, 43, 214, 0.35);
 }
 
 .maze-tomb-exit {
-  background-color: rgb(220, 210, 210);
-  border: 1px solid rgb(210, 210, 210);
-  border-top: 0.3rem double rgb(20, 20, 20);
+  background-color: #1a1233;
+  border: 1px solid rgba(255, 43, 214, 0.55);
+  border-top: 0.3rem double var(--neon-cyan);
 }
 
 .player-base {
   display: grid;
   grid-template-rows: 1fr;
-  background-color: rgb(185, 15, 15);
+  background-color: var(--neon-cyan);
   margin: 10%;
   border-radius: 20% 20% 45% 45%;
   padding: 0.1rem 0.1rem 0.5rem;
   grid-template-columns: 1fr 1fr;
   align-items: center;
   text-align: center;
-  color: white;
+  color: #032126;
+  box-shadow: 0 0 14px rgba(0, 245, 255, 0.85);
   z-index: 999;
 }
 
 .player-recovery {
-  background-color: rgba(255, 0, 0, 0.3);
-  outline: 0.1rem dashed rgba(255, 0, 0, 0.6);
+  background-color: rgba(0, 245, 255, 0.3);
+  outline: 0.1rem dashed rgba(0, 245, 255, 0.72);
 }
 
 .player-eye {
@@ -67,7 +119,7 @@
 }
 
 .player-dead {
-  background-color: rgb(180, 180, 180);
+  background-color: #6f7485;
 }
 
 .player-dead > * {
@@ -75,23 +127,25 @@
 }
 
 .player-power-ghost-hunter {
-  outline: 0.6rem double rgb(185, 15, 15);
-  background-color: rgb(185, 15, 15);
+  outline: 0.45rem double var(--neon-lime);
+  background-color: var(--neon-cyan);
+  box-shadow: 0 0 18px rgba(183, 255, 0, 0.95);
   z-index: 1001;
 }
 
 .ghost-base {
   display: grid;
   grid-template-rows: 1fr;
-  background-color: rgb(130, 0, 200);
-  outline: 2px solid rgb(60, 210, 0);
+  background-color: var(--neon-magenta);
+  outline: 2px solid var(--neon-cyan);
   margin: 5%;
   border-radius: 50% 50% 10% 10%;
   padding: 0.1rem 0.1rem 0.5rem;
   grid-template-columns: 1fr 1fr;
   align-items: center;
   text-align: center;
-  color: white;
+  color: #250926;
+  box-shadow: 0 0 15px rgba(255, 43, 214, 0.82);
   z-index: 1000;
 }
 
@@ -120,7 +174,8 @@
 
 .collectible-gem {
   display: grid;
-  color: rgb(60, 50, 5);
+  color: var(--neon-lime);
+  text-shadow: 0 0 10px rgba(183, 255, 0, 0.75);
   font-size: 1.4rem;
   justify-items: center;
   align-items: center;
@@ -128,13 +183,15 @@
 
 .collectible-powerup {
   display: grid;
-  background-color: rgb(5, 106, 72);
+  background-color: #073f2f;
   margin: 20%;
   border-radius: 50%;
-  color: white;
+  color: var(--neon-lime);
   font-size: 1.4rem;
   justify-items: center;
   align-items: center;
+  box-shadow: 0 0 12px rgba(183, 255, 0, 0.9);
+  animation: powerup-pulse 1.2s ease-in-out infinite;
 }
 
 #game-hud {
@@ -144,11 +201,14 @@
   justify-content: center;
   justify-items: center;
   align-items: center;
-  padding: 0.1rem 1rem;
-  font:
-    2rem "Source Code Pro",
-    monospace;
-  color: rgb(50, 50, 50);
+  padding: 0.45rem 1rem;
+  border: 1px solid rgba(0, 245, 255, 0.4);
+  border-bottom: none;
+  background: linear-gradient(180deg, rgba(18, 10, 36, 0.88) 0%, rgba(7, 4, 15, 0.75) 100%);
+  font-family: "Orbitron", sans-serif;
+  font-size: clamp(1.4rem, 3.4vw, 2rem);
+  color: var(--text-main);
+  text-shadow: 0 0 9px rgba(0, 245, 255, 0.5);
 }
 
 #hud-player-health {
@@ -167,16 +227,20 @@
 }
 
 .hud-score-zero-prefix {
-  color: rgb(180, 180, 180);
+  color: var(--text-muted);
 }
 
 .game-screen-show {
   display: grid;
   grid: 39rem / 63rem;
-  border: 0.5rem solid rgb(20, 20, 20);
-  background-color: rgba(20, 20, 20, 0.8);
+  border: 0.35rem solid var(--neon-magenta);
+  box-shadow:
+    0 0 16px rgba(255, 43, 214, 0.55),
+    inset 0 0 24px rgba(0, 245, 255, 0.12);
+  background-color: rgba(4, 8, 21, 0.82);
+  backdrop-filter: blur(1px);
   grid-area: 2 / 1;
-  font-family: "Source Code Pro", monospace;
+  font-family: "Share Tech Mono", monospace;
   z-index: 2000;
 }
 
@@ -188,43 +252,58 @@
   justify-content: space-between;
   align-items: center;
   row-gap: 1rem;
-  background-color: black;
-  color: white;
+  background: linear-gradient(180deg, rgba(17, 16, 31, 0.95) 0%, rgba(6, 9, 21, 0.93) 100%), var(--bg-panel);
+  border: 2px solid rgba(0, 245, 255, 0.52);
+  box-shadow: 0 0 18px rgba(0, 245, 255, 0.22);
+  color: var(--text-main);
   text-align: center;
   padding: 2rem 5rem;
 }
 
 .prompt-title {
-  font-size: 3rem;
-  font-weight: 800;
+  font-family: "Press Start 2P", cursive;
+  font-size: clamp(1.8rem, 5vw, 2.9rem);
+  line-height: 1.35;
+  color: var(--neon-cyan);
+  text-shadow:
+    0 0 8px rgba(0, 245, 255, 0.85),
+    0 0 16px rgba(0, 245, 255, 0.4);
 }
 
 .leaderboard-group {
-  border: 0.2rem dotted white;
+  border: 0.14rem dashed rgba(255, 43, 214, 0.95);
+  box-shadow: inset 0 0 16px rgba(255, 43, 214, 0.15);
   padding: 1rem;
   margin-bottom: 0.5rem;
 }
 
 .prompt-sub-title {
-  font-size: 2rem;
+  font-family: "Orbitron", sans-serif;
+  font-size: clamp(1.2rem, 3.5vw, 1.6rem);
   font-weight: 700;
+  letter-spacing: 0.08rem;
+  color: var(--neon-magenta);
 }
 
 .leaderboard-list {
   padding: 1rem;
+  font-size: clamp(0.95rem, 2.2vw, 1.1rem);
 }
 
 .game-countdown-show {
   display: grid;
   justify-content: center;
   align-items: center;
-  border: 0.5rem solid rgb(20, 20, 20);
-  background-color: rgba(20, 20, 20, 0.5);
+  border: 0.35rem solid var(--neon-cyan);
+  background-color: rgba(4, 8, 20, 0.55);
   grid-area: 2 / 1;
-  font:
-    900 10rem "Source Code Pro",
-    monospace;
-  color: white;
+  font-family: "Press Start 2P", cursive;
+  font-size: clamp(4rem, 16vw, 8.5rem);
+  font-weight: 900;
+  color: var(--neon-magenta);
+  text-shadow:
+    0 0 12px rgba(255, 43, 214, 0.85),
+    0 0 20px rgba(255, 43, 214, 0.45);
   z-index: 1100;
 }
 
@@ -236,10 +315,11 @@ h3 {
 }
 
 #game-foot {
-  font:
-    1rem "Source Code Pro",
-    monospace;
+  font-family: "Share Tech Mono", monospace;
+  font-size: clamp(0.9rem, 2.2vw, 1.05rem);
+  color: var(--text-main);
   text-align: center;
+  line-height: 1.45;
   padding: 1rem;
 }
 
@@ -266,7 +346,9 @@ h3 {
 }
 
 .results-score-time {
-  font-size: 1.2rem;
+  font-size: clamp(1rem, 2.4vw, 1.2rem);
+  color: var(--neon-lime);
+  text-shadow: 0 0 8px rgba(183, 255, 0, 0.45);
 }
 
 #initials-maze {
@@ -274,8 +356,9 @@ h3 {
   display: grid;
   justify-content: center;
   grid: 3rem auto / repeat(3, 3rem);
-  border: 0.5rem solid white;
-  font-family: "Source Code Pro", monospace;
+  border: 0.3rem solid var(--neon-cyan);
+  box-shadow: 0 0 10px rgba(0, 245, 255, 0.4);
+  font-family: "Share Tech Mono", monospace;
   margin-top: 0.6rem;
   margin-bottom: 0.6rem;
 }
@@ -285,7 +368,7 @@ h3 {
   display: grid;
   justify-content: center;
   align-items: center;
-  color: white;
+  color: var(--text-main);
   font-size: 2rem;
   font-weight: 700;
 }
@@ -299,20 +382,115 @@ h3 {
   display: grid;
   justify-content: center;
   grid: repeat(2, 3rem) / repeat(5, 3rem);
-  border: 0.5rem solid white;
-  font-family: "Source Code Pro", monospace;
+  border: 0.3rem solid var(--neon-magenta);
+  box-shadow: 0 0 10px rgba(255, 43, 214, 0.35);
+  font-family: "Share Tech Mono", monospace;
   margin-top: 0.6rem;
   margin-bottom: 0.6rem;
 }
 
 #onboarding-instruction {
   width: 20rem;
+  color: var(--text-muted);
+  font-size: 0.95rem;
 }
 
 .ui-button {
   width: 14rem;
-  height: 2rem;
-  font:
-    1rem "Source Code Pro",
-    monospace;
+  height: 2.35rem;
+  border: 1px solid var(--neon-cyan);
+  background: linear-gradient(90deg, rgba(0, 245, 255, 0.12), rgba(255, 43, 214, 0.16));
+  color: var(--text-main);
+  font-family: "Orbitron", sans-serif;
+  font-size: clamp(0.9rem, 2.2vw, 1.05rem);
+  letter-spacing: 0.05rem;
+  cursor: pointer;
+  transition:
+    transform 160ms ease,
+    box-shadow 160ms ease,
+    border-color 160ms ease;
+}
+
+.ui-button:hover {
+  transform: translateY(-1px);
+  border-color: var(--neon-magenta);
+  box-shadow:
+    0 0 10px rgba(0, 245, 255, 0.35),
+    0 0 14px rgba(255, 43, 214, 0.35);
+}
+
+.ui-button:active {
+  transform: translateY(0);
+}
+
+.ui-button:disabled,
+#game-start-button:disabled {
+  cursor: not-allowed;
+  color: var(--text-muted);
+  border-color: rgba(138, 163, 191, 0.45);
+  background: linear-gradient(90deg, rgba(138, 163, 191, 0.15), rgba(45, 58, 82, 0.22));
+  box-shadow: none;
+  opacity: 0.62;
+  transform: none;
+  filter: saturate(0.45);
+}
+
+.ui-button:disabled:hover,
+#game-start-button:disabled:hover {
+  transform: none;
+  border-color: rgba(138, 163, 191, 0.45);
+  box-shadow: none;
+}
+
+@keyframes powerup-pulse {
+  0% {
+    transform: scale(1);
+    box-shadow: 0 0 8px rgba(183, 255, 0, 0.7);
+  }
+  50% {
+    transform: scale(1.08);
+    box-shadow: 0 0 16px rgba(183, 255, 0, 0.95);
+  }
+  100% {
+    transform: scale(1);
+    box-shadow: 0 0 8px rgba(183, 255, 0, 0.7);
+  }
+}
+
+@media (max-width: 1100px) {
+  #maze,
+  .game-screen-show {
+    transform: scale(0.85);
+    transform-origin: top center;
+  }
+
+  .game-prompt {
+    padding: 1.4rem 2rem;
+  }
+
+  #game-foot {
+    margin-top: -4rem;
+  }
+}
+
+@media (max-width: 720px) {
+  #maze,
+  .game-screen-show {
+    transform: scale(0.62);
+  }
+
+  #game-hud {
+    font-size: 1.1rem;
+    padding: 0.3rem 0.6rem;
+  }
+
+  #hud-player-health {
+    gap: 0.6rem;
+  }
+
+  #game-foot {
+    margin-top: -8.8rem;
+    font-size: 0.78rem;
+    line-height: 1.3;
+  }
 }
