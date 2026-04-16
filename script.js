@@ -660,6 +660,50 @@ const getAvailablePathsFromTile = (tile) => {
   return availablePaths;
 };
 
+const getClosestPath = (srcTile, destTile) => {
+  let closestTile = null;
+  let closestTileDist = -1;
+  let tileDirection = -1;
+  const destTilePos = destTile.getPosition();
+
+  if (srcTile) {
+    for (let direction = 0; direction < 4; direction++) {
+      const checkTile = checkPathInDirection(srcTile, direction);
+      if (checkTile) {
+        const checkTileDist = getDistance(checkTile.getPosition(), destTilePos);
+        if ((closestTile && checkTileDist < closestTileDist) || !closestTile) {
+          closestTile = checkTile;
+          closestTileDist = checkTileDist;
+          tileDirection = direction;
+        }
+      }
+    }
+  }
+  return [tileDirection, closestTile];
+};
+
+const getFurthestPath = (srcTile, destTile) => {
+  let furthestTile = null;
+  let furthestTileDist = -1;
+  let tileDirection = -1;
+  const destTilePos = destTile.getPosition();
+
+  if (srcTile) {
+    for (let direction = 0; direction < 4; direction++) {
+      const checkTile = checkPathInDirection(srcTile, direction);
+      if (checkTile) {
+        const checkTileDist = getDistance(checkTile.getPosition(), destTilePos);
+        if ((furthestTile && checkTileDist > furthestTileDist) || !furthestTile) {
+          furthestTile = checkTile;
+          furthestTileDist = checkTileDist;
+          tileDirection = direction;
+        }
+      }
+    }
+  }
+  return [tileDirection, furthestTile];
+};
+
 const spawnGhost = () => {
   if (availableGhosts.length > 0) {
     const ghost = availableGhosts.shift();
@@ -682,26 +726,60 @@ const checkToSpawnGhost = () => {
 };
 
 const ghostDecision = (ghost) => {
-  if (!ghost.tick()) {
-    let newDirection = -1;
-    if (Math.floor(Math.random() * 10) > 2) {
-      const availableTiles = getAvailablePathsFromTile(ghost.tile);
-      const [direction, tile] = availableTiles[Math.floor(Math.random() * availableTiles.length)];
-      newDirection = direction;
-      moveAvatarTo(ghost, tile);
-    }
-    ghost.updateDirection(newDirection);
-    newDirection !== -1 ? ghost.setMoveTick() : ghost.setIdleTick();
-  } else {
-    const destinationTile = checkPathInDirection(ghost.tile, ghost.direction);
-    if (destinationTile) {
-      moveAvatarTo(ghost, destinationTile);
-    } else {
-      ghost.updateDirection();
-      ghost.setIdleTick();
+  const availableTiles = getAvailablePathsFromTile(ghost.tile);
+
+  if (ghostSeesPlayer(ghost)) {
+    if (player.hasPowerType(0)) {
+      const [tileDirection, furthestTile] = getFurthestPath(ghost.tile, player.tile);
+      if (furthestTile) {
+        moveAvatarTo(ghost, furthestTile);
+        ghost.updateDirection(tileDirection);
+        ghost.setMoveTick();
+        return;
+      }
+    } else if (player.isAlive) {
+      const [tileDirection, closestTile] = getClosestPath(ghost.tile, player.tile);
+      if (closestTile) {
+        moveAvatarTo(ghost, closestTile);
+        ghost.updateDirection(tileDirection);
+        ghost.setMoveTick();
+        return;
+      }
     }
   }
+
+  let destTile = null;
+  let direction = -1;
+
+  if (!ghost.tick()) {
+    if (Math.floor(Math.random() * 10) > 2) {
+      [direction, destTile] = availableTiles[Math.floor(Math.random() * availableTiles.length)];
+    }
+    ghost.updateDirection(direction);
+    direction !== -1 ? ghost.setMoveTick() : ghost.setIdleTick();
+  } else {
+    destTile = checkPathInDirection(ghost.tile, ghost.direction);
+  }
+
+  if (destTile) {
+    moveAvatarTo(ghost, destTile);
+  } else {
+    ghost.updateDirection();
+    ghost.setIdleTick();
+  }
 };
+
+const ghostSeesPlayer = (ghost) => {
+  const ghostTilePos = ghost.tile.getPosition();
+  const playerTilePos = player.tile.getPosition();
+  return getDistance(ghostTilePos, playerTilePos) <= 4;
+};
+
+function getDistance(pos1, pos2) {
+  const dx = pos2[0] - pos1[0];
+  const dy = pos2[1] - pos1[1];
+  return Math.sqrt(Math.pow(dx, 2) + Math.pow(dy, 2));
+}
 
 const killGhost = (ghost) => {
   ghost.kill();
@@ -1224,10 +1302,10 @@ const initPreGame = (clearData = false) => {
 };
 
 const initGhosts = () => {
-  tombTiles.forEach((tile, i) => {
-    tile.addGhost(ghosts[i]);
-    ghosts[i].tile = tile;
-    ghosts[i].updateDirection();
+  ghosts.forEach((ghost, i) => {
+    tombTiles[i].addGhost(ghost);
+    ghost.tile = tombTiles[i];
+    ghost.updateDirection();
   });
   roamingGhosts.length = 0;
   availableGhosts.length = 0;
