@@ -22,6 +22,10 @@ class MazeTile {
     return this.#typeID === 0;
   }
 
+  get isTomb() {
+    return this.#typeID === 2;
+  }
+
   get isTombExit() {
     return this.#typeID === 3;
   }
@@ -98,6 +102,7 @@ class MazeTile {
         removed.push(ghost);
       }
     }
+    this.#ghosts.length = 0;
     return removed;
   }
 
@@ -157,6 +162,10 @@ class AvatarBase {
     this.#element.append(...this.#eyes);
   }
 
+  get eyeStateStyles() {
+    return this.#eyeStateStyles;
+  }
+
   get element() {
     return this.#element;
   }
@@ -166,10 +175,10 @@ class AvatarBase {
   }
 
   updateDirection(direction = -1) {
-    this.#element.classList.remove(...this.#eyeStateStyles);
+    this.#element.classList.remove(...this.eyeStateStyles);
     this.#direction = direction;
-    if (direction >= 0 && direction < this.#eyeStateStyles.length) {
-      this.#element.classList.add(this.#eyeStateStyles[direction]);
+    if (direction >= 0 && direction < this.eyeStateStyles.length) {
+      this.#element.classList.add(this.eyeStateStyles[direction]);
     } else {
       this.#direction = -1;
     }
@@ -354,7 +363,7 @@ class Ghost extends AvatarBase {
   #maxMoveTicks = 5;
   #maxIdleTicks = 2;
   #ticksLeft = 0;
-  #timerIDs = {};
+  #intervalID = null;
   #value = 200;
 
   constructor() {
@@ -378,14 +387,12 @@ class Ghost extends AvatarBase {
   }
 
   setAlive(thoughtInterval, callbackAction, ...args) {
-    const intervalID = setInterval(callbackAction, thoughtInterval, ...args);
-    this.#timerIDs[intervalID] = true;
+    clearInterval(this.#intervalID);
+    this.#intervalID = setInterval(callbackAction, thoughtInterval, ...args);
   }
 
   kill() {
-    for (const timerID in this.#timerIDs) {
-      clearInterval(timerID);
-    }
+    clearInterval(this.#intervalID);
   }
 }
 
@@ -452,6 +459,7 @@ const gameOverContainer = document.querySelector("#game-over");
 const gameOverLeaderboardContainer = document.querySelector("#game-over-leaderboard");
 const initialsContainer = document.querySelector("#leaderboard-initials");
 const inputContainers = [...initialsContainer.querySelectorAll(".initials-char")];
+const gameStartButton = document.querySelector("#game-start-button");
 
 const hiddenStyle = "is-hidden";
 const gameScreenShowStyle = "game-screen-show";
@@ -472,6 +480,7 @@ const mazeContainer = document.querySelector("#maze");
 
 const mazeSize = { rows: 13, columns: 21 };
 const mazeTiles = [];
+const tombTiles = [];
 
 const player = new Player();
 const inGameKeys = { directionalKeysDown: 0, lastMoveKey: "" };
@@ -479,8 +488,11 @@ const inGameKeys = { directionalKeysDown: 0, lastMoveKey: "" };
 let ghostSpawningTile = null;
 const ghosts = [new Ghost(), new Ghost(), new Ghost(), new Ghost(), new Ghost()];
 const availableGhosts = [];
+const roamingGhosts = [];
 const ghostSpawnInterval = 5 * 1000;
-const ghostDecisionInterval = 200;
+const ghostDecisionIntervalMax = 200;
+const ghostDecisionFactor = 150;
+let ghostDecisionInterval = 0;
 let lastGhostTimestamp = -1;
 
 const gems = [];
@@ -501,7 +513,7 @@ const playerMaxLives = 1;
 const playerRevivalDelay = 4 * 1000;
 const playerLives = [];
 
-const gameUpdateInterval = 200;
+const gameUpdateInterval = 10;
 let gameIntervalID = null;
 const gameSessionIDs = {};
 const gamePowerTimeoutIDs = { 0: null };
@@ -513,6 +525,8 @@ let currentPlayerHealth = 0;
 let currentScore = 0;
 let gameStartTime = 0;
 let elapsedTime = 0;
+
+const timeLimit = 90 * 1000;
 
 // ---------- Game Creation ----------
 
@@ -526,12 +540,16 @@ const buildMaze = () => {
       rowTiles.push(tile);
       mazeContainer.appendChild(tile.element);
 
-      if (tile.isTombExit) {
-        ghostSpawningTile = mazeTiles[i - 1][j];
-      }
-
-      if (powerUpKey in info) {
-        powerUpTiles.push([tile, info[powerUpKey]]);
+      switch (true) {
+        case tile.isTomb:
+          tombTiles.push(tile);
+          break;
+        case tile.isTombExit:
+          ghostSpawningTile = mazeTiles[i - 1][j];
+          break;
+        case powerUpKey in info:
+          powerUpTiles.push([tile, info[powerUpKey]]);
+          break;
       }
     }
   }
@@ -613,13 +631,16 @@ const getAvailablePathsFromTile = (tile) => {
 };
 
 const spawnGhost = () => {
-  const ghost = availableGhosts.shift();
-  ghostSpawningTile.addGhost(ghost);
-  ghost.tile = ghostSpawningTile;
-  ghost.setAlive(ghostDecisionInterval, ghostDecision, ghost);
-  getAvailablePathsFromTile(ghost.tile);
-  lastGhostTimestamp = Date.now();
-  checkTile(ghostSpawningTile);
+  if (availableGhosts.length > 0) {
+    const ghost = availableGhosts.shift();
+    ghost.tile.removeGhost(ghost);
+    roamingGhosts.push(ghost);
+    ghostSpawningTile.addGhost(ghost);
+    ghost.tile = ghostSpawningTile;
+    ghost.setAlive(ghostDecisionInterval, ghostDecision, ghost);
+    lastGhostTimestamp = Date.now();
+    checkTile(ghostSpawningTile);
+  }
 };
 
 const checkGhosts = () => {
@@ -650,6 +671,21 @@ const ghostDecision = (ghost) => {
       ghost.setIdleTick();
     }
   }
+};
+
+const killGhost = (ghost) => {
+  ghost.kill();
+  ghost.updateDirection();
+  ghost.tile = null;
+  roamingGhosts.splice(roamingGhosts.indexOf(ghost), 1);
+  for (const tile of tombTiles) {
+    if (!tile.hasGhost()) {
+      tile.addGhost(ghost);
+      ghost.tile = tile;
+      break;
+    }
+  }
+  availableGhosts.push(ghost);
 };
 
 const spawnPlayer = () => {
@@ -712,6 +748,13 @@ const updateScore = (value) => {
   playerScoreCurrentContainer.textContent = value;
 };
 
+const updateTime = () => {
+  elapsedTime = Date.now() - gameStartTime;
+  timeLeft = timeLimit - elapsedTime;
+  timeLeft = timeLeft < 0 ? 0 : timeLeft;
+  elapsedGameTimeContainer.textContent = getTimeMMSS(timeLeft);
+};
+
 const checkGems = () => {
   if (lastGemTimestamp !== -1 && removedGems.length > 0) {
     if ((Date.now() - lastGemTimestamp) / gemCoolDownDuration >= 1) {
@@ -739,10 +782,9 @@ const checkTile = (tile) => {
       const ghostHunterLevel = player.hasPowerType(0);
       if (ghostHunterLevel) {
         for (const ghost of tile.removeAllGhosts()) {
-          ghost.kill();
           addScore(ghost.value * ghostHunterLevel);
           player.increasePowerLevel(0);
-          availableGhosts.push(ghost);
+          killGhost(ghost);
         }
       } else {
         playerLives[--currentPlayerHealth].setDead();
@@ -758,15 +800,23 @@ const checkTile = (tile) => {
 };
 
 const checkGameOver = () => {
-  if (isPlaying && currentPlayerHealth <= 0) {
+  if (isPlaying && (currentPlayerHealth <= 0 || elapsedTime >= timeLimit)) {
     gameOver();
   }
 };
 
 const onInterval = () => {
   if (isPlaying) {
-    elapsedTime = Date.now() - gameStartTime;
-    elapsedGameTimeContainer.textContent = getTimeMMSS(elapsedTime);
+    updateTime();
+
+    const ghostIntervalCheck =
+      ghostDecisionIntervalMax - (Math.min(elapsedTime, timeLimit) / timeLimit) * ghostDecisionFactor;
+    if (ghostDecisionInterval - ghostIntervalCheck > ghostDecisionIntervalMax / 10) {
+      ghostDecisionInterval = ghostIntervalCheck;
+      for (const ghost of roamingGhosts) {
+        ghost.setAlive(ghostDecisionInterval, ghostDecision, ghost);
+      }
+    }
   }
   checkGems();
   checkPowerUps();
@@ -787,7 +837,6 @@ const handleKeyDown = (e) => {
       inGameKeys.directionalKeysDown++;
     }
   } else if (moveKeys.includes(e.key)) {
-    // if (lastMoveKey === moveKeys[0] && e.key === moveKeys[1]) {
     if (inGameKeys.lastMoveKey !== e.key) {
       const destinationTile = checkPathInDirection(player.tile, player.direction);
       if (destinationTile) {
@@ -813,13 +862,19 @@ const handleKeyUp = (e) => {
 
 const handleGameStart = (e) => {
   if (!isPlaying) {
+    document.removeEventListener("keydown", handleOnboardKeyDown);
+    document.removeEventListener("keyup", handleOnboardKeyUp);
     gameSplashContainer.classList.remove(gameScreenShowStyle);
     init();
   }
 };
 
 const handleRestart = (e) => {
+  document.removeEventListener("keydown", handleInitialsKeyDown);
+  document.removeEventListener("keyup", handleInitialsKeyUp);
   gameOverContainer.classList.remove(gameScreenShowStyle);
+
+  initOnboard();
 
   gameSplashLeaderboardContainer.append(leaderboardObj.container);
   gameSplashContainer.classList.add(gameScreenShowStyle);
@@ -836,7 +891,7 @@ const handleRestart = (e) => {
 const addHandlers = () => {
   document.addEventListener("keydown", handleKeyDown);
   document.addEventListener("keyup", handleKeyUp);
-  document.querySelector("#game-start-button").addEventListener("click", handleGameStart);
+  gameStartButton.addEventListener("click", handleGameStart);
   document.querySelector("#game-home-button").addEventListener("click", handleRestart);
 };
 
@@ -844,7 +899,121 @@ const addHandlers = () => {
 
 const resultsScoreContainer = document.querySelector(".results-score-time");
 const updateResults = () => {
-  resultsScoreContainer.textContent = `Your score: ${getScoreZerosPrefix(currentScore)}${currentScore} | ${getTimeMMSS(elapsedTime)}`;
+  resultsScoreContainer.textContent = `Your score: ${getScoreZerosPrefix(currentScore)}${currentScore}`;
+};
+
+// ---------- Onboarding ----------
+
+const outOfGameKeys = { directionalKeysDown: 0, lastMoveKey: "" };
+
+const onboardingMazeContainer = document.querySelector("#onboarding-maze");
+const onboardingMessageContainer = document.querySelector("#onboarding-instruction");
+const onboardingTiles = [];
+const onboardingPlayer = new Player();
+const onboardingTargets = {};
+
+let targetTile = null;
+
+const buildOnboarding = () => {
+  const tilesData = [
+    [0, 1, 0, 0, 0],
+    [0, 0, 0, 1, 0],
+  ];
+
+  for (let i = 0; i < tilesData.length; i++) {
+    const rowTiles = [];
+    onboardingTiles.push(rowTiles);
+    for (let j = 0; j < tilesData[i].length; j++) {
+      const tile = new MazeTile(i, j, tilesData[i][j]);
+      rowTiles.push(tile);
+      onboardingMazeContainer.appendChild(tile.element);
+    }
+  }
+
+  onboardingTargets.firstTile = onboardingTiles[0][0];
+  onboardingTargets.lastTile = onboardingTiles[tilesData.length - 1][tilesData[tilesData.length - 1].length - 1];
+};
+
+const checkOnboardPath = (srcTile, direction, steps = 1) => {
+  if (srcTile && direction > -1) {
+    let [rowIdx, colIdx] = srcTile.getPosition();
+    if (direction % 2 === 0) {
+      rowIdx += (direction - 1) * steps;
+    } else {
+      colIdx += (direction - 2) * steps;
+    }
+    if (rowIdx >= 0 && rowIdx < onboardingTiles.length && colIdx >= 0 && colIdx < onboardingTiles[0].length) {
+      const destinationTile = onboardingTiles[rowIdx][colIdx];
+      return destinationTile.isPath ? destinationTile : null;
+    }
+  }
+  return null;
+};
+
+const updateOnboardMessage = (messageID) => {
+  const message = [
+    "Try moving to the last tile on the right.",
+    "Now try moving back to the first tile on the left.",
+    "You are ready!",
+  ];
+  onboardingMessageContainer.textContent = message[messageID];
+};
+
+const initOnboard = () => {
+  updateOnboardMessage(0);
+
+  onboardingTargets.firstTile.addPlayer(onboardingPlayer);
+  onboardingPlayer.tile = onboardingTargets.firstTile;
+
+  targetTile = onboardingTargets.lastTile;
+  outOfGameKeys.directionalKeysDown = 0;
+  outOfGameKeys.lastMoveKey = "";
+
+  document.addEventListener("keydown", handleOnboardKeyDown);
+  document.addEventListener("keyup", handleOnboardKeyUp);
+
+  gameStartButton.disabled = true;
+};
+
+const checkOnBoardTarget = (tile) => {
+  if (tile === targetTile) {
+    if (tile === onboardingTargets.lastTile) {
+      targetTile = onboardingTargets.firstTile;
+      updateOnboardMessage(1);
+    } else {
+      targetTile = null;
+      updateOnboardMessage(2);
+      gameStartButton.disabled = false;
+    }
+  }
+};
+
+const handleOnboardKeyDown = (e) => {
+  if (directionalKeys.includes(e.key)) {
+    onboardingPlayer.updateDirection(directionalKeys.indexOf(e.key));
+    if (!e.repeat) {
+      outOfGameKeys.directionalKeysDown++;
+    }
+  } else if (moveKeys.includes(e.key)) {
+    if (outOfGameKeys.lastMoveKey !== e.key) {
+      const destinationTile = checkOnboardPath(onboardingPlayer.tile, onboardingPlayer.direction);
+      if (destinationTile) {
+        moveAvatarTo(onboardingPlayer, destinationTile);
+        checkOnBoardTarget(destinationTile);
+      }
+    }
+    outOfGameKeys.lastMoveKey = e.key;
+  }
+};
+
+const handleOnboardKeyUp = (e) => {
+  if (directionalKeys.includes(e.key)) {
+    if (outOfGameKeys.directionalKeysDown > 0) {
+      if (--outOfGameKeys.directionalKeysDown === 0) {
+        onboardingPlayer.updateDirection();
+      }
+    }
+  }
 };
 
 // ---------- Leaderboard ----------
@@ -852,7 +1021,6 @@ const updateResults = () => {
 const initialsMazeContainer = document.querySelector("#initials-maze");
 const initialsTiles = [];
 const initialsPlayer = new Player();
-const outOfGameKeys = { directionalKeysDown: 0, lastMoveKey: "" };
 const leaderboardObj = {};
 const leaderboardListStyle = "leaderboard-list";
 const initialsCharStyle = "initials-char";
@@ -866,23 +1034,23 @@ const getLeaderboardData = (resetData = false) => {
     }
   }
   return [
-    ["AAA", "3000", "60000"],
-    ["BBB", "2000", "50000"],
-    ["CCC", "1000", "40000"],
+    ["AAA", "3000"],
+    ["BBB", "2000"],
+    ["CCC", "1000"],
   ];
 };
 
-const getRankString = (idx, initialsStr, scoreValue, timeValue) => {
-  return `${idx + 1}. ${initialsStr} | ${getScoreZerosPrefix(scoreValue) + scoreValue} | ${getTimeMMSS(parseInt(timeValue))}`;
+const getRankString = (idx, initialsStr, scoreValue) => {
+  return `${idx + 1}. ${initialsStr} | ${getScoreZerosPrefix(scoreValue) + scoreValue}`;
 };
 
 const createLeaderBoardListing = (data, listItems) => {
   const container = document.createElement("div");
   container.classList.add(leaderboardListStyle);
 
-  data.forEach(([lbInitials, lbScore, lbTime], i) => {
+  data.forEach(([lbInitials, lbScore], i) => {
     const rankElement = document.createElement("div");
-    rankElement.textContent = getRankString(i, lbInitials, lbScore, lbTime);
+    rankElement.textContent = getRankString(i, lbInitials, lbScore);
     container.append(rankElement);
     listItems.push(rankElement);
   });
@@ -908,11 +1076,11 @@ const checkEligibleForLeaderboard = () => {
 
 const updateLeaderboard = () => {
   if (initialsPlayer.rank !== -1) {
-    const initials = leaderboardObj.data.splice(initialsPlayer.rank, 0, [getInitials(), currentScore, elapsedTime]);
+    const initials = leaderboardObj.data.splice(initialsPlayer.rank, 0, [getInitials(), currentScore]);
     leaderboardObj.data.pop();
 
-    leaderboardObj.data.forEach(([lbInitials, lbScore, lbTime], i) => {
-      leaderboardObj.listItems[i].textContent = getRankString(i, lbInitials, lbScore, lbTime);
+    leaderboardObj.data.forEach(([lbInitials, lbScore], i) => {
+      leaderboardObj.listItems[i].textContent = getRankString(i, lbInitials, lbScore);
     });
 
     if (typeof Storage !== "undefined") {
@@ -1011,6 +1179,7 @@ const getTimeMMSS = (timeMs) => {
 
 const initPreGame = (clearData = false) => {
   initLeaderboard(clearData);
+  buildOnboarding();
   buildInitialsInput();
   buildGame();
 
@@ -1020,9 +1189,16 @@ const initPreGame = (clearData = false) => {
   elapsedGameTimeContainer.textContent = getTimeMMSS((elapsedTime = 0));
 
   addHandlers();
+  handleRestart(null);
 };
 
 const initGhosts = () => {
+  tombTiles.forEach((tile, i) => {
+    tile.addGhost(ghosts[i]);
+    ghosts[i].tile = tile;
+    ghosts[i].updateDirection();
+  });
+  roamingGhosts.length = 0;
   availableGhosts.length = 0;
   availableGhosts.push(...ghosts);
 };
@@ -1084,6 +1260,8 @@ const gameOver = () => {
 
   initialsPlayer.rank = checkEligibleForLeaderboard();
   if (initialsPlayer.rank !== -1) {
+    outOfGameKeys.directionalKeysDown = 0;
+    outOfGameKeys.lastMoveKey = "";
     initialsContainer.classList.remove(hiddenStyle);
     document.addEventListener("keydown", handleInitialsKeyDown);
     document.addEventListener("keyup", handleInitialsKeyUp);
@@ -1096,6 +1274,8 @@ const init = () => {
   inGameKeys.directionalKeysDown = 0;
   currentScore = 0;
   elapsedTime = 0;
+  elapsedGameTimeContainer.textContent = getTimeMMSS(timeLimit);
+  ghostDecisionInterval = ghostDecisionIntervalMax;
 
   initGhosts();
   initPlayerLife();

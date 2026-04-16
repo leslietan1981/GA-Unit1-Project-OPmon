@@ -23,7 +23,11 @@
       </div>
       <div id="maze"></div>
       <div id="game-foot">
-        Controls: Hold WASD for direction and press OP alternately to move in the held direction.
+        <b>Controls:</b>
+        <br />
+        <b>Hold</b> a direction key <b>(W, A, S, or D)</b> to choose which way to move.
+        <br />
+        Then press <b>O and P alternately</b> to move in that direction.
       </div>
       <div id="game-splash" class="is-hidden game-screen-show">
         <!-- <div id="game-splash" class="is-hidden"> -->
@@ -32,7 +36,11 @@
           <div id="game-splash-leaderboard" class="leaderboard-group">
             <div class="prompt-sub-title">Top Ranks</div>
           </div>
-          <input type="button" id="game-start-button" value="Start Game" />
+          <div>
+            <div id="onboarding-instruction"></div>
+            <div id="onboarding-maze"></div>
+          </div>
+          <input type="button" id="game-start-button" class="ui-button" value="Start Game" />
         </div>
       </div>
       <div id="game-countdown" class="is-hidden">
@@ -52,7 +60,7 @@
               <div>Press ENTER to submit</div>
             </div>
           </div>
-          <input type="button" id="game-home-button" value="Back to Menu" />
+          <input type="button" id="game-home-button" class="ui-button" value="Back to Menu" />
         </div>
       </div>
     </div>

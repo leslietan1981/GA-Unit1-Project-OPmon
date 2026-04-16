@@ -31,6 +31,7 @@
 }
 
 .maze-tomb-space {
+  display: grid;
   background-color: rgb(220, 210, 210);
   border: 1px dashed rgb(210, 210, 210);
 }
@@ -188,6 +189,7 @@
   display: flex;
   flex-direction: column;
   justify-content: space-between;
+  align-items: center;
   row-gap: 1rem;
   background-color: black;
   color: white;
@@ -226,6 +228,7 @@
     900 10rem "Source Code Pro",
     monospace;
   color: white;
+  z-index: 1100;
 }
 
 h1,
@@ -272,6 +275,7 @@ h3 {
 #initials-maze {
   justify-self: center;
   display: grid;
+  justify-content: center;
   grid: 3rem auto / repeat(3, 3rem);
   border: 0.5rem solid white;
   font-family: "Source Code Pro", monospace;
@@ -291,4 +295,27 @@ h3 {
 
 #game-results {
   margin-bottom: 1rem;
+}
+
+#onboarding-maze {
+  justify-self: center;
+  display: grid;
+  justify-content: center;
+  grid: repeat(2, 3rem) / repeat(5, 3rem);
+  border: 0.5rem solid white;
+  font-family: "Source Code Pro", monospace;
+  margin-top: 0.6rem;
+  margin-bottom: 0.6rem;
+}
+
+#onboarding-instruction {
+  width: 20rem;
+}
+
+.ui-button {
+  width: 14rem;
+  height: 2rem;
+  font:
+    1rem "Source Code Pro",
+    monospace;
 }

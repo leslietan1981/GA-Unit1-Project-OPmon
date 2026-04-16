@@ -3,7 +3,7 @@
 3. check if player score is higher than any of the top 3 - DONE
 4. Allow player to key in 3-char initials if top 3 - DONE
 5. Back to Splash button on end screen - DONE
-6. Ghosts in tomb before spawning
+6. Ghosts in tomb before spawning - DONE
 7. Game start countdown - DONE
 8. Player powerup visual, during and expiring - DONE
 
