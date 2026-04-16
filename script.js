@@ -489,14 +489,14 @@ let ghostSpawningTile = null;
 const ghosts = [new Ghost(), new Ghost(), new Ghost(), new Ghost(), new Ghost()];
 const availableGhosts = [];
 const roamingGhosts = [];
-const ghostSpawnInterval = 5 * 1000;
+const ghostSpawnInterval = 2 * 1000;
 const ghostDecisionIntervalMax = 200;
 const ghostDecisionFactor = 150;
 let ghostDecisionInterval = 0;
 let lastGhostTimestamp = -1;
 
 const gems = [];
-const gemCoolDownDuration = 5 * 1000;
+const gemCoolDownDuration = 1 * 1000;
 const removedGems = [];
 let lastGemTimestamp = -1;
 
@@ -504,7 +504,7 @@ const powerUpsConfig = [{ powerType: 0, duration: 5 * 1000 }];
 const powerUpKey = "powerup";
 const powerUpTiles = [];
 const powerUps = [];
-const powerUpCoolDownDuration = 10 * 1000;
+const powerUpCoolDownDuration = 20 * 1000;
 const removedPowerUps = [];
 let lastPowerUpTimestamp = -1;
 
@@ -526,7 +526,7 @@ let currentScore = 0;
 let gameStartTime = 0;
 let elapsedTime = 0;
 
-const timeLimit = 90 * 1000;
+const timeLimit = 60 * 1000;
 
 // ---------- Game Creation ----------
 
