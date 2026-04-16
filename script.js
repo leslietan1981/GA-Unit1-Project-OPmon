@@ -455,15 +455,33 @@ const gameSplashContainer = document.querySelector("#game-splash");
 const gameSplashLeaderboardContainer = document.querySelector("#game-splash-leaderboard");
 const gameCountdownContainer = document.querySelector("#game-countdown");
 const gameCountAnimationContainer = document.querySelector("#countdown-message");
+const gameStartButton = document.querySelector("#game-start-button");
+
 const gameOverContainer = document.querySelector("#game-over");
+const resultsScoreContainer = document.querySelector(".results-score-time");
 const gameOverLeaderboardContainer = document.querySelector("#game-over-leaderboard");
 const initialsContainer = document.querySelector("#leaderboard-initials");
 const inputContainers = [...initialsContainer.querySelectorAll(".initials-char")];
-const gameStartButton = document.querySelector("#game-start-button");
+const initialsMazeContainer = document.querySelector("#initials-maze");
+const initialsTiles = [];
+const initialsPlayer = new Player();
+const leaderboardObj = {};
+const leaderboardListStyle = "leaderboard-list";
+const initialsCharStyle = "initials-char";
+
+const onboardingMazeContainer = document.querySelector("#onboarding-maze");
+const onboardingMessageContainer = document.querySelector("#onboarding-instruction");
+const outOfGameKeys = { directionalKeysDown: 0, lastMoveKey: "" };
+const onboardingTiles = [];
+const onboardingPlayer = new Player();
+const onboardingTargets = {};
+
+let targetTile = null;
 
 const hiddenStyle = "is-hidden";
 const gameScreenShowStyle = "game-screen-show";
 const gameCountdownShowStyle = "game-countdown-show";
+const countdownAnimationStyle = "count-animation";
 
 const charactersList = "abcdefghijklmnopqrstuvwxyz1234567890~!@#$.-:".toUpperCase().split("");
 
@@ -475,7 +493,6 @@ const playerScoreContainer = document.querySelector("#hud-player-score");
 const playerScoreZeroPrefixContainer = document.querySelector(".hud-score-zero-prefix");
 const playerScoreCurrentContainer = document.querySelector(".hud-score-current");
 const elapsedGameTimeContainer = document.querySelector("#hud-elapsed-game-time");
-
 const mazeContainer = document.querySelector("#maze");
 
 const mazeSize = { rows: 13, columns: 21 };
@@ -483,6 +500,10 @@ const mazeTiles = [];
 const tombTiles = [];
 
 const player = new Player();
+const playerLifeStyle = "player-base";
+const playerMaxLives = 3;
+const playerRevivalDelay = 4 * 1000;
+const playerLives = [];
 const inGameKeys = { directionalKeysDown: 0, lastMoveKey: "" };
 
 let ghostSpawningTile = null;
@@ -508,15 +529,8 @@ const powerUpCoolDownDuration = 20 * 1000;
 const removedPowerUps = [];
 let lastPowerUpTimestamp = -1;
 
-const playerLifeStyle = "player-base";
-const playerMaxLives = 3;
-const playerRevivalDelay = 4 * 1000;
-const playerLives = [];
-
 const gameUpdateInterval = 10;
 let gameIntervalID = null;
-const gameSessionIDs = {};
-const gamePowerTimeoutIDs = { 0: null };
 
 const gameScoreDefaultString = "0000000";
 
@@ -643,7 +657,7 @@ const spawnGhost = () => {
   }
 };
 
-const checkGhosts = () => {
+const checkToSpawnGhost = () => {
   if (availableGhosts.length > 0) {
     if (lastGhostTimestamp === -1 || (Date.now() - lastGhostTimestamp) / ghostSpawnInterval >= 1) {
       spawnGhost();
@@ -707,7 +721,7 @@ const moveAvatarTo = (avatar, tile) => {
 };
 
 const collectCollectible = (collectible) => {
-  addScore(collectible.value);
+  addToScore(collectible.value);
 
   switch (true) {
     case collectible instanceof Gem:
@@ -738,12 +752,12 @@ const addPowerForDuration = (powerUp) => {
   player.removePower(powerUp.powerType, powerUp.duration);
 };
 
-const addScore = (value) => {
+const addToScore = (value) => {
   currentScore += value;
-  updateScore(currentScore);
+  updateDisplayedScore(currentScore);
 };
 
-const updateScore = (value) => {
+const updateDisplayedScore = (value) => {
   playerScoreZeroPrefixContainer.textContent = getScoreZerosPrefix(value);
   playerScoreCurrentContainer.textContent = value;
 };
@@ -755,7 +769,7 @@ const updateTime = () => {
   elapsedGameTimeContainer.textContent = getTimeMMSS(timeLeft);
 };
 
-const checkGems = () => {
+const checkToSpawnGem = () => {
   if (lastGemTimestamp !== -1 && removedGems.length > 0) {
     if ((Date.now() - lastGemTimestamp) / gemCoolDownDuration >= 1) {
       addCollectibleBack(...removedGems.shift());
@@ -764,7 +778,7 @@ const checkGems = () => {
   }
 };
 
-const checkPowerUps = () => {
+const checkToSpawnPowerUp = () => {
   if (lastPowerUpTimestamp !== -1 && removedPowerUps.length > 0) {
     if ((Date.now() - lastPowerUpTimestamp) / powerUpCoolDownDuration >= 1) {
       addCollectibleBack(...removedPowerUps.shift());
@@ -782,7 +796,7 @@ const checkTile = (tile) => {
       const ghostHunterLevel = player.hasPowerType(0);
       if (ghostHunterLevel) {
         for (const ghost of tile.removeAllGhosts()) {
-          addScore(ghost.value * ghostHunterLevel);
+          addToScore(ghost.value * ghostHunterLevel);
           player.increasePowerLevel(0);
           killGhost(ghost);
         }
@@ -799,10 +813,14 @@ const checkTile = (tile) => {
   }
 };
 
-const checkGameOver = () => {
+const checkForGameOver = () => {
   if (isPlaying && (currentPlayerHealth <= 0 || elapsedTime >= timeLimit)) {
     gameOver();
   }
+};
+
+const updateResults = () => {
+  resultsScoreContainer.textContent = `Your score: ${getScoreZerosPrefix(currentScore)}${currentScore}`;
 };
 
 const onInterval = () => {
@@ -818,10 +836,10 @@ const onInterval = () => {
       }
     }
   }
-  checkGems();
-  checkPowerUps();
-  checkGhosts();
-  checkGameOver();
+  checkToSpawnGem();
+  checkToSpawnPowerUp();
+  checkToSpawnGhost();
+  checkForGameOver();
 };
 
 // ---------- Game Interactions ----------
@@ -884,7 +902,7 @@ const handleRestart = (e) => {
     playerLife.element.remove();
   }
 
-  updateScore((currentScore = 0));
+  updateDisplayedScore((currentScore = 0));
   elapsedGameTimeContainer.textContent = getTimeMMSS((elapsedTime = 0));
 };
 
@@ -895,24 +913,7 @@ const addHandlers = () => {
   document.querySelector("#game-home-button").addEventListener("click", handleRestart);
 };
 
-// ---------- Game Results ----------
-
-const resultsScoreContainer = document.querySelector(".results-score-time");
-const updateResults = () => {
-  resultsScoreContainer.textContent = `Your score: ${getScoreZerosPrefix(currentScore)}${currentScore}`;
-};
-
 // ---------- Onboarding ----------
-
-const outOfGameKeys = { directionalKeysDown: 0, lastMoveKey: "" };
-
-const onboardingMazeContainer = document.querySelector("#onboarding-maze");
-const onboardingMessageContainer = document.querySelector("#onboarding-instruction");
-const onboardingTiles = [];
-const onboardingPlayer = new Player();
-const onboardingTargets = {};
-
-let targetTile = null;
 
 const buildOnboarding = () => {
   const tilesData = [
@@ -1017,14 +1018,6 @@ const handleOnboardKeyUp = (e) => {
 };
 
 // ---------- Leaderboard ----------
-
-const initialsMazeContainer = document.querySelector("#initials-maze");
-const initialsTiles = [];
-const initialsPlayer = new Player();
-const leaderboardObj = {};
-const leaderboardListStyle = "leaderboard-list";
-const initialsCharStyle = "initials-char";
-const countdownAnimationStyle = "count-animation";
 
 const getLeaderboardData = (resetData = false) => {
   if (typeof Storage !== "undefined" && !resetData) {
@@ -1185,7 +1178,7 @@ const initPreGame = (clearData = false) => {
 
   gameSplashLeaderboardContainer.append(leaderboardObj.container);
 
-  updateScore((currentScore = 0));
+  updateDisplayedScore((currentScore = 0));
   elapsedGameTimeContainer.textContent = getTimeMMSS((elapsedTime = 0));
 
   addHandlers();
