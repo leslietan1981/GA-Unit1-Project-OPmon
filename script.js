@@ -512,8 +512,8 @@ let ghostSpawningTile = null;
 const ghosts = [new Ghost(), new Ghost(), new Ghost(), new Ghost(), new Ghost()];
 const availableGhosts = [];
 const roamingGhosts = [];
-const ghostSpawnInterval = 3 * 1000;
-const ghostDecisionIntervalMax = 300;
+const ghostSpawnInterval = 2 * 1000;
+const ghostDecisionIntervalMax = 200;
 const ghostDecisionFactor = 100;
 let ghostDecisionInterval = 0;
 let lastGhostTimestamp = -1;
@@ -774,7 +774,7 @@ const ghostDecision = (ghost) => {
 const ghostSeesPlayer = (ghost) => {
   const ghostTilePos = ghost.tile.getPosition();
   const playerTilePos = player.tile.getPosition();
-  return getDistance(ghostTilePos, playerTilePos) <= 4;
+  return getDistance(ghostTilePos, playerTilePos) <= 5;
 };
 
 function getDistance(pos1, pos2) {
@@ -881,7 +881,7 @@ const checkToSpawnGem = () => {
 };
 
 const checkToSpawnPowerUp = () => {
-  if (lastPowerUpTimestamp !== -1 && removedPowerUps.length > 0) {
+  if (lastPowerUpTimestamp !== -1 && removedPowerUps.length > 2) {
     if ((Date.now() - lastPowerUpTimestamp) / powerUpCoolDownDuration >= 1) {
       addCollectibleBack(...removedPowerUps.shift());
       lastPowerUpTimestamp = removedPowerUps.length > 0 ? Date.now() : -1;
