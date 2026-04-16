@@ -542,6 +542,15 @@ let elapsedTime = 0;
 
 const timeLimit = 60 * 1000;
 
+// ---------- Sound ----------
+
+const moveKeysSounds = [new Audio("sound/o.mp3"), new Audio("sound/p.mp3")];
+const powerUpSound = new Audio("sound/powerup.mp3");
+const gemSound = new Audio("sound/gem.mp3");
+const eatGhostSound = new Audio("sound/eatghost.mp3");
+const gameOverSound = new Audio("sound/gameover.mp3");
+const damageSound = new Audio("sound/damage.mp3");
+
 // ---------- Game Creation ----------
 
 const buildMaze = () => {
@@ -606,11 +615,18 @@ const createPlayerHealth = () => {
   }
 };
 
+const setupSounds = () => {
+  for (const audioObj of moveKeysSounds) {
+    audioObj.volume = 0.1;
+  }
+};
+
 const buildGame = () => {
   buildMaze();
   createPowerUps();
   createGems();
   createPlayerHealth();
+  setupSounds();
 };
 
 // ---------- Game Logic ----------
@@ -729,6 +745,7 @@ const collectCollectible = (collectible) => {
       if (lastGemTimestamp === -1) {
         lastGemTimestamp = Date.now();
       }
+      playSound(gemSound);
       break;
     case collectible instanceof PowerUp:
       addPowerForDuration(collectible);
@@ -736,6 +753,7 @@ const collectCollectible = (collectible) => {
       if (lastPowerUpTimestamp === -1) {
         lastPowerUpTimestamp = Date.now();
       }
+      playSound(powerUpSound);
       break;
   }
   collectible.tile.removeCollectible();
@@ -745,6 +763,7 @@ const collectCollectible = (collectible) => {
 const addCollectibleBack = (collectible, tile) => {
   tile.addCollectible(collectible);
   collectible.tile = tile;
+  checkTile(tile);
 };
 
 const addPowerForDuration = (powerUp) => {
@@ -800,8 +819,10 @@ const checkTile = (tile) => {
           player.increasePowerLevel(0);
           killGhost(ghost);
         }
+        playSound(eatGhostSound);
       } else {
         playerLives[--currentPlayerHealth].setDead();
+        playSound(damageSound);
         if (currentPlayerHealth > 0) {
           player.setLimbo();
           player.revive(playerRevivalDelay);
@@ -821,6 +842,11 @@ const checkForGameOver = () => {
 
 const updateResults = () => {
   resultsScoreContainer.textContent = `Your score: ${getScoreZerosPrefix(currentScore)}${currentScore}`;
+};
+
+const playSound = (audioObj) => {
+  audioObj.currentTime = 0;
+  audioObj.play();
 };
 
 const onInterval = () => {
@@ -855,13 +881,16 @@ const handleKeyDown = (e) => {
       inGameKeys.directionalKeysDown++;
     }
   } else if (moveKeys.includes(e.key)) {
-    if (inGameKeys.lastMoveKey !== e.key) {
-      const destinationTile = checkPathInDirection(player.tile, player.direction);
-      if (destinationTile) {
-        moveAvatarTo(player, destinationTile);
+    if (!e.repeat) {
+      if (inGameKeys.lastMoveKey !== e.key) {
+        const destinationTile = checkPathInDirection(player.tile, player.direction);
+        if (destinationTile) {
+          moveAvatarTo(player, destinationTile);
+        }
       }
+      inGameKeys.lastMoveKey = e.key;
+      playSound(moveKeysSounds[moveKeys.indexOf(e.key)]);
     }
-    inGameKeys.lastMoveKey = e.key;
   }
 };
 
@@ -981,10 +1010,12 @@ const checkOnBoardTarget = (tile) => {
     if (tile === onboardingTargets.lastTile) {
       targetTile = onboardingTargets.firstTile;
       updateOnboardMessage(1);
+      playSound(gemSound);
     } else {
       targetTile = null;
       updateOnboardMessage(2);
       gameStartButton.disabled = false;
+      playSound(powerUpSound);
     }
   }
 };
@@ -996,14 +1027,17 @@ const handleOnboardKeyDown = (e) => {
       outOfGameKeys.directionalKeysDown++;
     }
   } else if (moveKeys.includes(e.key)) {
-    if (outOfGameKeys.lastMoveKey !== e.key) {
-      const destinationTile = checkOnboardPath(onboardingPlayer.tile, onboardingPlayer.direction);
-      if (destinationTile) {
-        moveAvatarTo(onboardingPlayer, destinationTile);
-        checkOnBoardTarget(destinationTile);
+    if (!e.repeat) {
+      if (outOfGameKeys.lastMoveKey !== e.key) {
+        const destinationTile = checkOnboardPath(onboardingPlayer.tile, onboardingPlayer.direction);
+        if (destinationTile) {
+          moveAvatarTo(onboardingPlayer, destinationTile);
+          checkOnBoardTarget(destinationTile);
+        }
       }
+      outOfGameKeys.lastMoveKey = e.key;
+      playSound(moveKeysSounds[moveKeys.indexOf(e.key)]);
     }
-    outOfGameKeys.lastMoveKey = e.key;
   }
 };
 
@@ -1125,21 +1159,25 @@ const handleInitialsKeyDown = (e) => {
       outOfGameKeys.directionalKeysDown++;
     }
   } else if (moveKeys.includes(e.key)) {
-    if (outOfGameKeys.lastMoveKey !== e.key) {
-      let [, colIdx] = initialsPlayer.tile.getPosition();
-      if (initialsPlayer.direction % 2 === 0) {
-        const currentValue = initialsPlayer.tile.divRef.textContent;
-        initialsPlayer.tile.divRef.textContent = getCharacter(currentValue, initialsPlayer.direction === 0);
-      } else {
-        colIdx += initialsPlayer.direction - 2;
-        if (colIdx >= 0 && colIdx < initialsTiles.length) {
-          initialsPlayer.tile.removePlayer();
-          initialsTiles[colIdx].addAvatar(initialsPlayer);
-          initialsPlayer.tile = initialsTiles[colIdx];
+    if (!e.repeat) {
+      if (outOfGameKeys.lastMoveKey !== e.key) {
+        let [, colIdx] = initialsPlayer.tile.getPosition();
+        if (initialsPlayer.direction % 2 === 0) {
+          const currentValue = initialsPlayer.tile.divRef.textContent;
+          initialsPlayer.tile.divRef.textContent = getCharacter(currentValue, initialsPlayer.direction === 0);
+          playSound(gemSound);
+        } else {
+          colIdx += initialsPlayer.direction - 2;
+          if (colIdx >= 0 && colIdx < initialsTiles.length) {
+            initialsPlayer.tile.removePlayer();
+            initialsTiles[colIdx].addAvatar(initialsPlayer);
+            initialsPlayer.tile = initialsTiles[colIdx];
+          }
         }
       }
+      outOfGameKeys.lastMoveKey = e.key;
+      playSound(moveKeysSounds[moveKeys.indexOf(e.key)]);
     }
-    outOfGameKeys.lastMoveKey = e.key;
   } else if (e.key === "Enter") {
     updateLeaderboard();
     document.removeEventListener("keydown", handleInitialsKeyDown);
@@ -1248,6 +1286,7 @@ const gameOver = () => {
   isPlaying = false;
   gameOverContainer.classList.add(gameScreenShowStyle);
   gameOverLeaderboardContainer.append(leaderboardObj.container);
+  playSound(gameOverSound);
 
   updateResults();
 

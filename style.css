@@ -45,7 +45,7 @@
 .player-base {
   display: grid;
   grid-template-rows: 1fr;
-  background-color: red;
+  background-color: rgb(185, 15, 15);
   margin: 10%;
   border-radius: 20% 20% 45% 45%;
   padding: 0.1rem 0.1rem 0.5rem;
@@ -75,17 +75,16 @@
 }
 
 .player-power-ghost-hunter {
-  outline: 0.6rem double red;
-  background-color: rgb(50, 240, 180);
-  color: red;
+  outline: 0.6rem double rgb(185, 15, 15);
+  background-color: rgb(185, 15, 15);
   z-index: 1001;
 }
 
 .ghost-base {
   display: grid;
   grid-template-rows: 1fr;
-  background-color: rgb(50, 200, 0);
-  outline: 1px solid rgb(60, 210, 0);
+  background-color: rgb(130, 0, 200);
+  outline: 2px solid rgb(60, 210, 0);
   margin: 5%;
   border-radius: 50% 50% 10% 10%;
   padding: 0.1rem 0.1rem 0.5rem;
@@ -121,8 +120,7 @@
 
 .collectible-gem {
   display: grid;
-  color: rgb(245, 225, 25);
-  -webkit-text-stroke: 1px rgb(180, 150, 10);
+  color: rgb(60, 50, 5);
   font-size: 1.4rem;
   justify-items: center;
   align-items: center;
@@ -130,11 +128,10 @@
 
 .collectible-powerup {
   display: grid;
-  background-color: aquamarine;
+  background-color: rgb(5, 106, 72);
   margin: 20%;
   border-radius: 50%;
-  border: 1px solid rgb(60, 210, 0);
-  color: black;
+  color: white;
   font-size: 1.4rem;
   justify-items: center;
   align-items: center;
