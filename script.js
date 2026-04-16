@@ -509,7 +509,7 @@ const removedPowerUps = [];
 let lastPowerUpTimestamp = -1;
 
 const playerLifeStyle = "player-base";
-const playerMaxLives = 1;
+const playerMaxLives = 3;
 const playerRevivalDelay = 4 * 1000;
 const playerLives = [];
 
