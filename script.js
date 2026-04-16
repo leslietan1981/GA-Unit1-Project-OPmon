@@ -475,6 +475,8 @@ const outOfGameKeys = { directionalKeysDown: 0, lastMoveKey: "" };
 const onboardingTiles = [];
 const onboardingPlayer = new Player();
 const onboardingTargets = {};
+const onboardingGem = new Gem();
+const onboardingPowerUp = new PowerUp({ powerType: 0, duration: 5 * 1000 });
 
 let targetTile = null;
 
@@ -510,9 +512,9 @@ let ghostSpawningTile = null;
 const ghosts = [new Ghost(), new Ghost(), new Ghost(), new Ghost(), new Ghost()];
 const availableGhosts = [];
 const roamingGhosts = [];
-const ghostSpawnInterval = 2 * 1000;
-const ghostDecisionIntervalMax = 200;
-const ghostDecisionFactor = 150;
+const ghostSpawnInterval = 3 * 1000;
+const ghostDecisionIntervalMax = 300;
+const ghostDecisionFactor = 100;
 let ghostDecisionInterval = 0;
 let lastGhostTimestamp = -1;
 
@@ -805,13 +807,16 @@ const spawnPlayer = () => {
   checkTile(tile);
 };
 
-const moveAvatarTo = (avatar, tile) => {
+const moveAvatarTo = (avatar, tile, skipCheck = false) => {
   if (avatar.tile) {
     avatar.tile.removeAvatar(avatar);
   }
   tile.addAvatar(avatar);
   avatar.tile = tile;
-  checkTile(tile);
+
+  if (!skipCheck) {
+    checkTile(tile);
+  }
 };
 
 const collectCollectible = (collectible) => {
@@ -867,7 +872,7 @@ const updateTime = () => {
 };
 
 const checkToSpawnGem = () => {
-  if (lastGemTimestamp !== -1 && removedGems.length > 0) {
+  if (lastGemTimestamp !== -1 && removedGems.length > 10) {
     if ((Date.now() - lastGemTimestamp) / gemCoolDownDuration >= 1) {
       addCollectibleBack(...removedGems.shift());
       lastGemTimestamp = removedGems.length > 0 ? Date.now() : -1;
@@ -933,7 +938,7 @@ const onInterval = () => {
 
     const ghostIntervalCheck =
       ghostDecisionIntervalMax - (Math.min(elapsedTime, timeLimit) / timeLimit) * ghostDecisionFactor;
-    if (ghostDecisionInterval - ghostIntervalCheck > ghostDecisionIntervalMax / 10) {
+    if (ghostDecisionInterval - ghostIntervalCheck > ghostDecisionIntervalMax / 5) {
       ghostDecisionInterval = ghostIntervalCheck;
       for (const ghost of roamingGhosts) {
         ghost.setAlive(ghostDecisionInterval, ghostDecision, ghost);
@@ -1070,8 +1075,11 @@ const updateOnboardMessage = (messageID) => {
 const initOnboard = () => {
   updateOnboardMessage(0);
 
+  onboardingPlayer.removePower(0);
   onboardingTargets.firstTile.addPlayer(onboardingPlayer);
   onboardingPlayer.tile = onboardingTargets.firstTile;
+
+  onboardingTargets.lastTile.addCollectible(onboardingGem);
 
   targetTile = onboardingTargets.lastTile;
   outOfGameKeys.directionalKeysDown = 0;
@@ -1088,11 +1096,15 @@ const checkOnBoardTarget = (tile) => {
     if (tile === onboardingTargets.lastTile) {
       targetTile = onboardingTargets.firstTile;
       updateOnboardMessage(1);
+      onboardingTargets.lastTile.removeCollectible();
+      onboardingTargets.firstTile.addCollectible(onboardingPowerUp);
       playSound(gemSound);
     } else {
       targetTile = null;
       updateOnboardMessage(2);
+      onboardingPlayer.addPower(onboardingPowerUp.powerType);
       gameStartButton.disabled = false;
+      onboardingTargets.firstTile.removeCollectible();
       playSound(powerUpSound);
     }
   }
@@ -1109,7 +1121,7 @@ const handleOnboardKeyDown = (e) => {
       if (outOfGameKeys.lastMoveKey !== e.key) {
         const destinationTile = checkOnboardPath(onboardingPlayer.tile, onboardingPlayer.direction);
         if (destinationTile) {
-          moveAvatarTo(onboardingPlayer, destinationTile);
+          moveAvatarTo(onboardingPlayer, destinationTile, true);
           checkOnBoardTarget(destinationTile);
         }
       }
