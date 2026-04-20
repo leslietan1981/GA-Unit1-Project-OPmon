@@ -1211,7 +1211,6 @@ const buildInitialsInput = () => {
   for (let i = 0; i < 3; i++) {
     const charDiv = document.createElement("div");
     charDiv.classList.add(initialsCharStyle);
-    charDiv.textContent = charactersList[0];
     charDivs.push(charDiv);
 
     const tile = new MazeTile(0, i, 0);
@@ -1220,9 +1219,6 @@ const buildInitialsInput = () => {
     initialsMazeContainer.append(tile.element);
   }
   initialsMazeContainer.append(...charDivs);
-
-  initialsTiles[0].addPlayer(initialsPlayer);
-  initialsPlayer.tile = initialsTiles[0];
 };
 
 const getCharacter = (currentChar, isNext = true) => {
@@ -1240,6 +1236,21 @@ const getInitials = () => {
     initialsStr += tile.divRef.textContent;
   }
   return initialsStr;
+};
+
+const initInitialsInput = () => {
+  for (const tile of initialsTiles) {
+    tile.divRef.textContent = charactersList[0];
+  }
+
+  if (initialsPlayer.tile) {
+    initialsPlayer.tile.removePlayer();
+  }
+  initialsTiles[0].addPlayer(initialsPlayer);
+  initialsPlayer.tile = initialsTiles[0];
+  initialsPlayer.setAlive();
+  document.addEventListener("keydown", handleInitialsKeyDown);
+  document.addEventListener("keyup", handleInitialsKeyUp);
 };
 
 const handleInitialsKeyDown = (e) => {
@@ -1385,8 +1396,7 @@ const gameOver = () => {
     outOfGameKeys.directionalKeysDown = 0;
     outOfGameKeys.lastMoveKey = "";
     initialsContainer.classList.remove(hiddenStyle);
-    document.addEventListener("keydown", handleInitialsKeyDown);
-    document.addEventListener("keyup", handleInitialsKeyUp);
+    initInitialsInput();
   } else {
     initialsContainer.classList.add(hiddenStyle);
   }
