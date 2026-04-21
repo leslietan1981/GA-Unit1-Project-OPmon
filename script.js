@@ -1418,4 +1418,4 @@ const init = () => {
   gameCountdown(["READY", "OP"]);
 };
 
-initPreGame(true);
+initPreGame();
