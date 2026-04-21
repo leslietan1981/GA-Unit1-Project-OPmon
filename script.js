@@ -1128,6 +1128,8 @@ const handleOnboardKeyDown = (e) => {
       outOfGameKeys.lastMoveKey = e.key;
       playSound(moveKeysSounds[moveKeys.indexOf(e.key)]);
     }
+  } else if (e.key === "Enter" && !gameStartButton.disabled) {
+    handleGameStart(e);
   }
 };
 
